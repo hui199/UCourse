@@ -14,5 +14,8 @@
         <attr name="cellHeight" format="dimension" />
         <attr name="headerHeight" format="dimension" />
         <attr name="sideBarWidth" format="dimension" />
+        <attr name="morningTextColor" format="color|reference" />
+        <attr name="afternoonTextColor" format="color|reference" />
+        <attr name="timeTextSize" format="dimension" />
     </declare-styleable>
 </resources>

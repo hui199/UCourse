@@ -6,4 +6,6 @@
     <color name="header_text_color">#333333</color>
     <color name="side_bar_text_color">#666666</color>
     <color name="background_color">#FFFFFF</color>
+    <color name="morning_text_color">#FF9800</color> <!-- 橙色表示上午 -->
+    <color name="afternoon_text_color">#2196F3</color> <!-- 蓝色表示下午 -->
 </resources>

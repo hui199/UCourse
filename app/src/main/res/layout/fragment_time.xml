@@ -31,10 +31,13 @@
         app:headerTextSize="14sp"
         app:sideBarTextColor="@color/side_bar_text_color"
         app:sideBarTextSize="12sp"
-        app:cellWidth="50dp"
+        app:cellWidth="45dp"
         app:cellHeight="40dp"
         app:headerHeight="30dp"
-        app:sideBarWidth="40dp" />
+        app:sideBarWidth="60dp"
+        app:morningTextColor="@color/morning_text_color"
+        app:afternoonTextColor="@color/afternoon_text_color"
+        app:timeTextSize="10sp" />
 
     <Button
         android:id="@+id/clearButton"
