@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="TimeTableView">
+        <attr name="gridLineColor" format="color|reference" />
+        <attr name="gridLineWidth" format="dimension" />
+        <attr name="timeSlotColor" format="color|reference" />
+        <attr name="timeSlotStrokeColor" format="color|reference" />
+        <attr name="timeSlotStrokeWidth" format="dimension" />
+        <attr name="headerTextColor" format="color|reference" />
+        <attr name="headerTextSize" format="dimension" />
+        <attr name="sideBarTextColor" format="color|reference" />
+        <attr name="sideBarTextSize" format="dimension" />
+        <attr name="cellWidth" format="dimension" />
+        <attr name="cellHeight" format="dimension" />
+        <attr name="headerHeight" format="dimension" />
+        <attr name="sideBarWidth" format="dimension" />
+    </declare-styleable>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="grid_line_color">#E0E0E0</color>
+    <color name="time_slot_color">#4CAF50</color>
+    <color name="time_slot_stroke_color">#388E3C</color>
+    <color name="header_text_color">#333333</color>
+    <color name="side_bar_text_color">#666666</color>
+    <color name="background_color">#FFFFFF</color>
+</resources>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/background_color">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="请滑动选择空闲时间段"
+        android:textSize="18sp"
+        android:textColor="@color/header_text_color"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <com.pku.or.courseassistant.view.TimeTableView
+        android:id="@+id/timeTableView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@color/background_color"
+        app:gridLineColor="@color/grid_line_color"
+        app:gridLineWidth="1dp"
+        app:timeSlotColor="@color/time_slot_color"
+        app:timeSlotStrokeColor="@color/time_slot_stroke_color"
+        app:timeSlotStrokeWidth="1dp"
+        app:headerTextColor="@color/header_text_color"
+        app:headerTextSize="14sp"
+        app:sideBarTextColor="@color/side_bar_text_color"
+        app:sideBarTextSize="12sp"
+        app:cellWidth="50dp"
+        app:cellHeight="40dp"
+        app:headerHeight="30dp"
+        app:sideBarWidth="40dp" />
+
+    <Button
+        android:id="@+id/clearButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="清空选择"
+        android:layout_marginTop="16dp"
+        android:background="@color/time_slot_color"
+        android:textColor="@android:color/white"
+        android:textSize="16sp" />
+
+</LinearLayout>
