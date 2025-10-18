@@ -23,6 +23,16 @@ public class TimeSlot implements Parcelable, Comparable<TimeSlot> {
         isSelected = in.readByte() != 0;
     }
 
+    /**
+     * 拷贝构造函数
+     */
+    public TimeSlot(TimeSlot other) {
+        this.day = other.day;
+        this.startSection = other.startSection;
+        this.endSection = other.endSection;
+        this.isSelected = other.isSelected;
+    }
+
     public static final Creator<TimeSlot> CREATOR = new Creator<TimeSlot>() {
         @Override
         public TimeSlot createFromParcel(Parcel in) {
