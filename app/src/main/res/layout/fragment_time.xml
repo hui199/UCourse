@@ -7,14 +7,7 @@
     android:padding="16dp"
     android:background="@color/background_color">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="请滑动选择空闲时间段"
-        android:textSize="18sp"
-        android:textColor="@color/header_text_color"
-        android:gravity="center"
-        android:layout_marginBottom="16dp" />
+    <!-- 移除顶部的提示文本 -->
 
     <com.pku.or.courseassistant.view.TimeTableView
         android:id="@+id/timeTableView"
@@ -33,20 +26,31 @@
         app:sideBarTextSize="12sp"
         app:cellWidth="45dp"
         app:cellHeight="40dp"
-        app:headerHeight="30dp"
+        app:headerHeight="40dp"
         app:sideBarWidth="60dp"
-        app:morningTextColor="@color/morning_text_color"
-        app:afternoonTextColor="@color/afternoon_text_color"
-        app:timeTextSize="10sp" />
+        app:morningBackgroundColor="@color/morning_background"
+        app:afternoonBackgroundColor="@color/afternoon_background"
+        app:eveningBackgroundColor="@color/evening_background"
+        app:todayHighlightColor="@color/today_highlight_color" />
+
+    <Button
+        android:id="@+id/selectDateButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="选择周次日期"
+        android:layout_marginTop="8dp"
+        android:background="@color/time_slot_color"
+        android:textColor="@android:color/white"
+        android:textSize="14sp" />
 
     <Button
         android:id="@+id/clearButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="清空选择"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:background="@color/time_slot_color"
         android:textColor="@android:color/white"
-        android:textSize="16sp" />
+        android:textSize="14sp" />
 
 </LinearLayout>

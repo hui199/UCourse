@@ -17,5 +17,9 @@
         <attr name="morningTextColor" format="color|reference" />
         <attr name="afternoonTextColor" format="color|reference" />
         <attr name="timeTextSize" format="dimension" />
+        <attr name="morningBackgroundColor" format="color|reference" />
+        <attr name="afternoonBackgroundColor" format="color|reference" />
+        <attr name="eveningBackgroundColor" format="color|reference" />
+        <attr name="todayHighlightColor" format="color|reference" />
     </declare-styleable>
 </resources>

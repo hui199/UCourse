@@ -6,6 +6,14 @@
     <color name="header_text_color">#333333</color>
     <color name="side_bar_text_color">#666666</color>
     <color name="background_color">#FFFFFF</color>
-    <color name="morning_text_color">#FF9800</color> <!-- 橙色表示上午 -->
-    <color name="afternoon_text_color">#2196F3</color> <!-- 蓝色表示下午 -->
+
+    <!-- 上午、下午、晚上背景色 -->
+    <color name="morning_background">#FFF9C4</color>    <!-- 浅黄色 -->
+    <color name="afternoon_background">#C8E6C9</color>  <!-- 浅绿色 -->
+    <color name="evening_background">#BBDEFB</color>    <!-- 浅蓝色 -->
+    <color name="sidebar_text_color">#000000</color>    <!-- 黑色文字 -->
+
+    <!-- 今天高亮背景色 -->
+    <color name="today_highlight_color">#4CAF50</color>
+    <color name="today_text_color">#FFFFFF</color>
 </resources>

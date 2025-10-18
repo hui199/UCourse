@@ -1,14 +1,9 @@
 package com.pku.or.courseassistant;
 
 import android.os.Bundle;
-
-import androidx.fragment.app.Fragment;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
-
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -20,15 +15,11 @@ import com.pku.or.courseassistant.view.TimeTableView;
 
 import java.util.List;
 
-/**
- * A simple {@link Fragment} subclass.
- * Use the {@link TimeFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
-public class TimeFragment extends Fragment implements OnTimeSelectListener{
+public class TimeFragment extends Fragment implements OnTimeSelectListener {
 
     private TimeTableView timeTableView;
     private Button clearButton;
+    private Button selectDateButton;
 
     public TimeFragment() {
         // Required empty public constructor
@@ -37,6 +28,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener{
     public static TimeFragment newInstance() {
         return new TimeFragment();
     }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -51,6 +43,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener{
     private void initViews(View view) {
         timeTableView = view.findViewById(R.id.timeTableView);
         clearButton = view.findViewById(R.id.clearButton);
+        selectDateButton = view.findViewById(R.id.selectDateButton);
     }
 
     private void setupListeners() {
@@ -63,20 +56,25 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener{
                 Toast.makeText(getContext(), "已清空所有时间段", Toast.LENGTH_SHORT).show();
             }
         });
+
+        selectDateButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                timeTableView.showDatePickerDialog(getContext());
+            }
+        });
     }
 
     @Override
     public void onTimeSlotSelected(TimeSlot timeSlot) {
-        // 实现选择回调
+        // 实现选择回调（可选）
     }
 
     @Override
     public void onTimeSlotChanged(List<TimeSlot> timeSlots) {
         // 时间段变化回调
         String message = "当前已选择 " + timeSlots.size() + " 个时间段";
-        if (getActivity() != null) {
-            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-        }
+        // 可以在这里更新UI显示时间段数量
     }
 
     @Override
@@ -89,7 +87,11 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener{
 
     @Override
     public void onTimeSlotRemoved(TimeSlot timeSlot) {
-        // 时间段移除回调
+        // 时间段移除回调（长按删除时也会触发）
+        String dayStr = getDayString(timeSlot.getDay());
+        String message = "已删除周" + dayStr + " 第" + (timeSlot.getStartSection() + 1) +
+                "-" + (timeSlot.getEndSection() + 1) + "节";
+        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
     }
 
     private String getDayString(int day) {

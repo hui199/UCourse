@@ -1,5 +1,6 @@
 package com.pku.or.courseassistant.view;
 
+import android.app.DatePickerDialog;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
@@ -12,14 +13,19 @@ import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.DatePicker;
 import android.widget.Toast;
 
 import com.pku.or.courseassistant.R;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class TimeTableView extends View {
@@ -27,7 +33,7 @@ public class TimeTableView extends View {
     private static final int ROW_COUNT = 12; // 12节课
     private static final int COLUMN_COUNT = 7; // 7天
     private static final int MAX_SLOTS_PER_DAY = 6; // 每天最多6个条形
-    private static final long LONG_PRESS_DURATION = 3000; // 长按3秒
+    private static final long LONG_PRESS_DURATION = 2000; // 长按3秒
 
     // 属性变量
     private int gridLineColor;
@@ -46,6 +52,10 @@ public class TimeTableView extends View {
     private int morningTextColor;
     private int afternoonTextColor;
     private float timeTextSize;
+    private int morningBackgroundColor;
+    private int afternoonBackgroundColor;
+    private int eveningBackgroundColor;
+    private int todayHighlightColor;
 
     // 绘制工具
     private Paint gridPaint;
@@ -54,6 +64,8 @@ public class TimeTableView extends View {
     private TextPaint headerTextPaint;
     private TextPaint timeTextPaint;
     private Paint longPressPaint;
+    private Paint backgroundPaint;
+    private Paint todayBackgroundPaint;
 
     // 数据
     private Map<Integer, List<TimeSlot>> timeSlotsMap;
@@ -71,10 +83,18 @@ public class TimeTableView extends View {
     private Handler longPressHandler = new Handler();
     private Runnable longPressRunnable;
 
+    // 日期相关
+    private Calendar currentStartDate; // 当前周的开始日期（周一）
+    private String[] dateHeaders = new String[7]; // 存储格式化后的日期标题
+    private Date[] headerDates = new Date[7]; // 存储每个标题的日期
+    private SimpleDateFormat headerDateFormat;
+    private SimpleDateFormat dayOfWeekFormat;
+    private SimpleDateFormat dateFormat;
+
     // 星期标题
     private String[] weekDays = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
 
-    // 节次和时间信息 - 每行包含节次数和时间段
+    // 节次和时间信息
     private String[] sectionNumbers = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"};
     private String[] timeRanges = {
             "8:00-8:50", "9:00-9:50", "10:00-10:50", "11:00-11:50",
@@ -102,12 +122,20 @@ public class TimeTableView extends View {
         // 初始化绘制工具
         initPaints();
 
+        // 初始化日期格式
+        headerDateFormat = new SimpleDateFormat("MM.dd", Locale.getDefault());
+        dayOfWeekFormat = new SimpleDateFormat("EEE", Locale.getDefault());
+        dateFormat = new SimpleDateFormat("MM.dd", Locale.getDefault());
+
         // 初始化数据
         timeSlotsMap = new HashMap<>();
         for (int i = 0; i < COLUMN_COUNT; i++) {
             timeSlotsMap.put(i, new ArrayList<TimeSlot>());
         }
         listeners = new ArrayList<>();
+
+        // 初始化日期
+        setStartDate(Calendar.getInstance().getTime());
 
         // 初始化长按Runnable
         longPressRunnable = new Runnable() {
@@ -142,25 +170,26 @@ public class TimeTableView extends View {
                 getResources().getColor(R.color.side_bar_text_color));
         sideBarTextSize = ta.getDimension(R.styleable.TimeTableView_sideBarTextSize,
                 TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 12, metrics));
-
-        // 减小列宽以适应屏幕
         cellWidth = ta.getDimension(R.styleable.TimeTableView_cellWidth,
-                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 45, metrics)); // 从50dp减小到45dp
-
+                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 45, metrics));
         cellHeight = ta.getDimension(R.styleable.TimeTableView_cellHeight,
                 TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40, metrics));
         headerHeight = ta.getDimension(R.styleable.TimeTableView_headerHeight,
-                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30, metrics));
+                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40, metrics)); // 增加高度以容纳两行文本
         sideBarWidth = ta.getDimension(R.styleable.TimeTableView_sideBarWidth,
-                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 60, metrics)); // 增加侧边栏宽度以显示时间
-
-        // 新增属性
-        morningTextColor = ta.getColor(R.styleable.TimeTableView_morningTextColor,
-                getResources().getColor(R.color.morning_text_color));
-        afternoonTextColor = ta.getColor(R.styleable.TimeTableView_afternoonTextColor,
-                getResources().getColor(R.color.afternoon_text_color));
+                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 60, metrics));
         timeTextSize = ta.getDimension(R.styleable.TimeTableView_timeTextSize,
                 TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 10, metrics));
+
+        // 新增属性
+        morningBackgroundColor = ta.getColor(R.styleable.TimeTableView_morningBackgroundColor,
+                getResources().getColor(R.color.morning_background));
+        afternoonBackgroundColor = ta.getColor(R.styleable.TimeTableView_afternoonBackgroundColor,
+                getResources().getColor(R.color.afternoon_background));
+        eveningBackgroundColor = ta.getColor(R.styleable.TimeTableView_eveningBackgroundColor,
+                getResources().getColor(R.color.evening_background));
+        todayHighlightColor = ta.getColor(R.styleable.TimeTableView_todayHighlightColor,
+                getResources().getColor(R.color.today_highlight_color));
 
         ta.recycle();
     }
@@ -179,13 +208,13 @@ public class TimeTableView extends View {
 
         // 侧边栏文字画笔
         textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setColor(sideBarTextColor);
+        textPaint.setColor(getResources().getColor(R.color.sidebar_text_color));
         textPaint.setTextSize(sideBarTextSize);
         textPaint.setTextAlign(Paint.Align.CENTER);
 
         // 时间文字画笔
         timeTextPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        timeTextPaint.setColor(sideBarTextColor);
+        timeTextPaint.setColor(getResources().getColor(R.color.sidebar_text_color));
         timeTextPaint.setTextSize(timeTextSize);
         timeTextPaint.setTextAlign(Paint.Align.CENTER);
 
@@ -194,6 +223,15 @@ public class TimeTableView extends View {
         headerTextPaint.setColor(headerTextColor);
         headerTextPaint.setTextSize(headerTextSize);
         headerTextPaint.setTextAlign(Paint.Align.CENTER);
+
+        // 背景画笔
+        backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        backgroundPaint.setStyle(Paint.Style.FILL);
+
+        // 今天背景画笔
+        todayBackgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        todayBackgroundPaint.setColor(todayHighlightColor);
+        todayBackgroundPaint.setStyle(Paint.Style.FILL);
 
         // 长按效果画笔
         longPressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -215,7 +253,6 @@ public class TimeTableView extends View {
             width = MeasureSpec.getSize(widthMeasureSpec);
         } else {
             width = Math.min(desiredWidth, MeasureSpec.getSize(widthMeasureSpec));
-            // 如果宽度仍然太大，进一步调整列宽
             if (width < desiredWidth) {
                 cellWidth = (width - sideBarWidth - getPaddingLeft() - getPaddingRight()) / COLUMN_COUNT;
             }
@@ -236,7 +273,7 @@ public class TimeTableView extends View {
 
         drawGrid(canvas);
         drawHeaders(canvas);
-        drawSideBarWithTime(canvas); // 修改：使用新的侧边栏绘制方法
+        drawSideBarWithTime(canvas);
         drawTimeSlots(canvas);
         drawCurrentSelection(canvas);
         drawLongPressEffect(canvas);
@@ -265,12 +302,38 @@ public class TimeTableView extends View {
     }
 
     private void drawHeaders(Canvas canvas) {
-        // 绘制星期标题
-        float centerX, centerY = headerHeight / 2;
+        // 绘制星期标题和日期 - 分两行显示避免重叠
+        float centerX, topY, bottomY;
+        float textSpacing = headerHeight / 4;
+
         for (int i = 0; i < COLUMN_COUNT; i++) {
             centerX = sideBarWidth + i * cellWidth + cellWidth / 2;
-            canvas.drawText(weekDays[i], centerX, centerY + headerTextSize / 3, headerTextPaint);
+
+            // 检查是否是今天，绘制特殊背景
+            if (isToday(headerDates[i])) {
+                RectF todayRect = new RectF(
+                        centerX - cellWidth / 2, 0,
+                        centerX + cellWidth / 2, headerHeight
+                );
+                canvas.drawRect(todayRect, todayBackgroundPaint);
+
+                // 今天使用白色文字
+                headerTextPaint.setColor(getResources().getColor(android.R.color.white));
+            } else {
+                headerTextPaint.setColor(headerTextColor);
+            }
+
+            // 第一行：星期几
+            topY = headerHeight / 3;
+            canvas.drawText(weekDays[i], centerX, topY + getTextBaseline(headerTextPaint), headerTextPaint);
+
+            // 第二行：日期
+            bottomY = headerHeight * 2 / 3;
+            String dateStr = headerDateFormat.format(headerDates[i]);
+            canvas.drawText(dateStr, centerX, bottomY + getTextBaseline(headerTextPaint), headerTextPaint);
         }
+        // 恢复默认文字颜色
+        headerTextPaint.setColor(headerTextColor);
     }
 
     private void drawSideBarWithTime(Canvas canvas) {
@@ -278,12 +341,23 @@ public class TimeTableView extends View {
 
         for (int i = 0; i < ROW_COUNT; i++) {
             float cellTop = headerHeight + i * cellHeight;
+            float cellBottom = cellTop + cellHeight;
             float cellCenterY = cellTop + cellHeight / 2;
 
-            // 设置颜色：前4节用上午颜色，后面的用下午颜色
-            int textColor = (i < 4) ? morningTextColor : afternoonTextColor;
-            textPaint.setColor(textColor);
-            timeTextPaint.setColor(textColor);
+            // 设置背景颜色基于节次（上午、下午、晚上）
+            int backgroundColor;
+            if (i < 4) { // 上午: 0-3 (1-4节课)
+                backgroundColor = morningBackgroundColor;
+            } else if (i < 8) { // 下午: 4-7 (5-8节课)
+                backgroundColor = afternoonBackgroundColor;
+            } else { // 晚上: 8-11 (9-12节课)
+                backgroundColor = eveningBackgroundColor;
+            }
+
+            // 绘制背景
+            backgroundPaint.setColor(backgroundColor);
+            RectF backgroundRect = new RectF(0, cellTop, sideBarWidth, cellBottom);
+            canvas.drawRect(backgroundRect, backgroundPaint);
 
             // 绘制节次数（较大字体，居中偏上）
             float sectionNumberY = cellCenterY - cellHeight / 4;
@@ -368,8 +442,82 @@ public class TimeTableView extends View {
         }
     }
 
-    // ... 其他方法（触摸事件处理、时间段管理等）保持不变，与之前相同 ...
-    // 这里省略了部分重复代码以节省空间，实际使用时请保持完整的触摸事件处理逻辑
+    // ========== 日期相关方法 ==========
+
+    /**
+     * 设置开始日期并更新周次
+     */
+    public void setStartDate(Date startDate) {
+        if (currentStartDate == null) {
+            currentStartDate = Calendar.getInstance();
+        }
+        currentStartDate.setTime(startDate);
+        updateDateHeaders();
+        invalidate();
+    }
+
+    /**
+     * 更新日期标题
+     */
+    private void updateDateHeaders() {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(currentStartDate.getTime());
+
+        // 调整到本周一
+        int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+        int daysToMonday = (dayOfWeek - Calendar.MONDAY + 7) % 7;
+        cal.add(Calendar.DAY_OF_MONTH, -daysToMonday);
+
+        for (int i = 0; i < 7; i++) {
+            headerDates[i] = cal.getTime();
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+        }
+    }
+
+    /**
+     * 检查日期是否是今天
+     */
+    private boolean isToday(Date date) {
+        if (date == null) return false;
+
+        Calendar today = Calendar.getInstance();
+        Calendar target = Calendar.getInstance();
+        target.setTime(date);
+
+        return today.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
+                today.get(Calendar.DAY_OF_YEAR) == target.get(Calendar.DAY_OF_YEAR);
+    }
+
+    /**
+     * 显示日期选择对话框
+     */
+    public void showDatePickerDialog(Context context) {
+        Calendar calendar = Calendar.getInstance();
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH);
+        int day = calendar.get(Calendar.DAY_OF_MONTH);
+
+        DatePickerDialog datePickerDialog = new DatePickerDialog(
+                context,
+                new DatePickerDialog.OnDateSetListener() {
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
+                        Calendar selectedDate = Calendar.getInstance();
+                        selectedDate.set(year, month, dayOfMonth);
+                        setStartDate(selectedDate.getTime());
+
+                        // 显示提示信息
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault());
+                        String message = "已切换到周次：" + sdf.format(selectedDate.getTime());
+                        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                    }
+                },
+                year, month, day
+        );
+        datePickerDialog.show();
+    }
+
+    // ========== 触摸事件处理 ==========
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -494,8 +642,58 @@ public class TimeTableView extends View {
         return null;
     }
 
-    // ... 时间段合并和管理方法保持不变 ...
-    // 这里省略了合并算法等重复代码
+    // ========== 时间段管理方法 ==========
+
+    private boolean canAddTimeSlot(int day, TimeSlot newSlot) {
+        List<TimeSlot> daySlots = timeSlotsMap.get(day);
+        if (daySlots.size() >= MAX_SLOTS_PER_DAY) {
+            return false;
+        }
+
+        for (TimeSlot existingSlot : daySlots) {
+            if (existingSlot.isSelected()) {
+                if (newSlot.getStartSection() <= existingSlot.getEndSection() &&
+                        newSlot.getEndSection() >= existingSlot.getStartSection()) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    public void addTimeSlot(TimeSlot timeSlot) {
+        if (timeSlot == null) return;
+
+        int day = timeSlot.getDay();
+        List<TimeSlot> daySlots = timeSlotsMap.get(day);
+        if (daySlots != null) {
+            daySlots.add(timeSlot);
+            mergeTimeSlots(day);
+            notifyTimeSlotCreated(timeSlot);
+            invalidate();
+        }
+    }
+
+    public void removeTimeSlot(TimeSlot timeSlot) {
+        if (timeSlot == null) return;
+
+        int day = timeSlot.getDay();
+        List<TimeSlot> daySlots = timeSlotsMap.get(day);
+        if (daySlots != null && daySlots.remove(timeSlot)) {
+            mergeTimeSlots(day);
+            notifyTimeSlotRemoved(timeSlot);
+            invalidate();
+        }
+    }
+
+    public void clearTimeSlots() {
+        for (int i = 0; i < COLUMN_COUNT; i++) {
+            timeSlotsMap.get(i).clear();
+        }
+        notifyTimeSlotsChanged();
+        invalidate();
+    }
 
     private void mergeTimeSlots(int day) {
         List<TimeSlot> daySlots = timeSlotsMap.get(day);
@@ -523,84 +721,6 @@ public class TimeTableView extends View {
         timeSlotsMap.put(day, merged);
     }
 
-    private boolean canAddTimeSlot(int day, TimeSlot newSlot) {
-        List<TimeSlot> daySlots = timeSlotsMap.get(day);
-        if (daySlots.size() >= MAX_SLOTS_PER_DAY) {
-            // 检查合并后是否还能添加
-            List<TimeSlot> testSlots = new ArrayList<>(daySlots);
-            testSlots.add(newSlot);
-            Collections.sort(testSlots);
-
-            List<TimeSlot> testMerged = new ArrayList<>();
-            TimeSlot current = testSlots.get(0);
-
-            for (int i = 1; i < testSlots.size(); i++) {
-                TimeSlot next = testSlots.get(i);
-                if (current.overlaps(next) || current.isAdjacent(next)) {
-                    current.mergeWith(next);
-                } else {
-                    testMerged.add(current);
-                    current = next;
-                }
-            }
-            testMerged.add(current);
-
-            return testMerged.size() <= MAX_SLOTS_PER_DAY;
-        }
-
-        return true;
-    }
-
-    public void addTimeSlot(TimeSlot timeSlot) {
-        if (timeSlot == null) return;
-
-        int day = timeSlot.getDay();
-        List<TimeSlot> daySlots = timeSlotsMap.get(day);
-        if (daySlots != null) {
-            daySlots.add(timeSlot);
-            // 添加后立即合并相邻时间段[2](@ref)
-            mergeTimeSlots(day);
-            notifyTimeSlotCreated(timeSlot);
-            invalidate();
-        }
-    }
-
-    public void removeTimeSlot(TimeSlot timeSlot) {
-        if (timeSlot == null) return;
-
-        int day = timeSlot.getDay();
-        List<TimeSlot> daySlots = timeSlotsMap.get(day);
-        if (daySlots != null && daySlots.remove(timeSlot)) {
-            // 删除后重新合并剩余时间段
-            mergeTimeSlots(day);
-            notifyTimeSlotRemoved(timeSlot);
-            invalidate();
-        }
-    }
-
-    public void clearTimeSlots() {
-        for (int i = 0; i < COLUMN_COUNT; i++) {
-            timeSlotsMap.get(i).clear();
-        }
-        notifyTimeSlotsChanged();
-        invalidate();
-    }
-
-    public List<TimeSlot> getAllTimeSlots() {
-        List<TimeSlot> allSlots = new ArrayList<>();
-        for (int i = 0; i < COLUMN_COUNT; i++) {
-            allSlots.addAll(timeSlotsMap.get(i));
-        }
-        return allSlots;
-    }
-
-    public List<TimeSlot> getTimeSlotsByDay(int day) {
-        if (day >= 0 && day < COLUMN_COUNT) {
-            return new ArrayList<>(timeSlotsMap.get(day));
-        }
-        return new ArrayList<>();
-    }
-
     private void resetSelection() {
         isSelecting = false;
         currentDay = -1;
@@ -617,7 +737,8 @@ public class TimeTableView extends View {
         return "未知";
     }
 
-    // 监听器管理
+    // ========== 监听器管理 ==========
+
     public void addOnTimeSelectListener(OnTimeSelectListener listener) {
         if (listener != null && !listeners.contains(listener)) {
             listeners.add(listener);
@@ -649,35 +770,24 @@ public class TimeTableView extends View {
         }
     }
 
-    // Getter和Setter方法
-    public Map<Integer, List<TimeSlot>> getTimeSlotsMap() { return timeSlotsMap; }
-    public void setTimeSlotsMap(Map<Integer, List<TimeSlot>> timeSlotsMap) {
-        this.timeSlotsMap = timeSlotsMap;
-        // 设置新数据后合并所有天的时间段
+    public List<TimeSlot> getAllTimeSlots() {
+        List<TimeSlot> allSlots = new ArrayList<>();
         for (int i = 0; i < COLUMN_COUNT; i++) {
-            mergeTimeSlots(i);
+            allSlots.addAll(timeSlotsMap.get(i));
         }
-        invalidate();
+        return allSlots;
     }
 
-    public int getGridLineColor() { return gridLineColor; }
-    public void setGridLineColor(int gridLineColor) {
-        this.gridLineColor = gridLineColor;
-        gridPaint.setColor(gridLineColor);
-        invalidate();
-    }
-
-    public int getTimeSlotColor() { return timeSlotColor; }
-    public void setTimeSlotColor(int timeSlotColor) {
-        this.timeSlotColor = timeSlotColor;
-        timeSlotPaint.setColor(timeSlotColor);
-        invalidate();
+    public List<TimeSlot> getTimeSlotsByDay(int day) {
+        if (day >= 0 && day < COLUMN_COUNT) {
+            return new ArrayList<>(timeSlotsMap.get(day));
+        }
+        return new ArrayList<>();
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        // 清除所有Handler回调，防止内存泄漏
         longPressHandler.removeCallbacksAndMessages(null);
     }
 }
