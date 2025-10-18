@@ -5,15 +5,18 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.os.Handler;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import com.pku.or.courseassistant.R;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +26,7 @@ public class TimeTableView extends View {
     private static final int ROW_COUNT = 12; // 12节课
     private static final int COLUMN_COUNT = 7; // 7天
     private static final int MAX_SLOTS_PER_DAY = 6; // 每天最多6个条形
+    private static final long LONG_PRESS_DURATION = 3000; // 长按3秒
 
     // 属性变量
     private int gridLineColor;
@@ -44,6 +48,7 @@ public class TimeTableView extends View {
     private Paint timeSlotPaint;
     private Paint textPaint;
     private Paint headerTextPaint;
+    private Paint longPressPaint;
 
     // 数据
     private Map<Integer, List<TimeSlot>> timeSlotsMap; // key: day, value: 当天的timeslots
@@ -55,6 +60,11 @@ public class TimeTableView extends View {
     private int currentEndSection = -1;
     private boolean isSelecting = false;
     private float startX, startY;
+    private long touchStartTime = 0;
+    private boolean isLongPressTriggered = false;
+    private TimeSlot longPressedSlot = null;
+    private Handler longPressHandler = new Handler();
+    private Runnable longPressRunnable;
 
     // 星期标题
     private String[] weekDays = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
@@ -86,6 +96,14 @@ public class TimeTableView extends View {
             timeSlotsMap.put(i, new ArrayList<TimeSlot>());
         }
         listeners = new ArrayList<>();
+
+        // 初始化长按Runnable
+        longPressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                handleLongPress();
+            }
+        };
 
         // 设置点击事件
         setClickable(true);
@@ -148,6 +166,11 @@ public class TimeTableView extends View {
         headerTextPaint.setColor(headerTextColor);
         headerTextPaint.setTextSize(headerTextSize);
         headerTextPaint.setTextAlign(Paint.Align.CENTER);
+
+        // 长按效果画笔
+        longPressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        longPressPaint.setColor(0x66FF0000); // 半透明红色
+        longPressPaint.setStyle(Paint.Style.FILL);
     }
 
     @Override
@@ -183,6 +206,7 @@ public class TimeTableView extends View {
         drawHeaders(canvas);
         drawTimeSlots(canvas);
         drawCurrentSelection(canvas);
+        drawLongPressEffect(canvas);
     }
 
     private void drawGrid(Canvas canvas) {
@@ -277,6 +301,18 @@ public class TimeTableView extends View {
         }
     }
 
+    private void drawLongPressEffect(Canvas canvas) {
+        if (isLongPressTriggered && longPressedSlot != null) {
+            float left = sideBarWidth + longPressedSlot.getDay() * cellWidth + cellWidth * 0.1f;
+            float right = left + cellWidth * 0.8f;
+            float top = headerHeight + longPressedSlot.getStartSection() * cellHeight;
+            float bottom = headerHeight + (longPressedSlot.getEndSection() + 1) * cellHeight;
+
+            RectF rect = new RectF(left, top, right, bottom);
+            canvas.drawRoundRect(rect, 8, 8, longPressPaint);
+        }
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (!isEnabled()) {
@@ -313,6 +349,17 @@ public class TimeTableView extends View {
         int section = (int) ((y - headerHeight) / cellHeight);
 
         if (day >= 0 && day < COLUMN_COUNT && section >= 0 && section < ROW_COUNT) {
+            // 检查是否点击在已存在的时间段上
+            TimeSlot clickedSlot = findTimeSlotAt(day, section);
+            if (clickedSlot != null) {
+                // 开始长按检测
+                longPressedSlot = clickedSlot;
+                touchStartTime = System.currentTimeMillis();
+                longPressHandler.postDelayed(longPressRunnable, LONG_PRESS_DURATION);
+                return;
+            }
+
+            // 正常的选择操作
             currentDay = day;
             currentStartSection = section;
             currentEndSection = section;
@@ -324,6 +371,14 @@ public class TimeTableView extends View {
     }
 
     private void handleActionMove(float x, float y) {
+        // 如果正在长按过程中移动，取消长按
+        if (longPressedSlot != null) {
+            longPressHandler.removeCallbacks(longPressRunnable);
+            longPressedSlot = null;
+            isLongPressTriggered = false;
+            invalidate();
+        }
+
         if (!isSelecting || currentDay < 0) return;
 
         int section = (int) ((y - headerHeight) / cellHeight);
@@ -336,6 +391,17 @@ public class TimeTableView extends View {
     }
 
     private void handleActionUp() {
+        // 取消长按检测
+        longPressHandler.removeCallbacks(longPressRunnable);
+
+        if (isLongPressTriggered) {
+            // 长按删除已完成，重置状态
+            isLongPressTriggered = false;
+            longPressedSlot = null;
+            invalidate();
+            return;
+        }
+
         if (!isSelecting || currentDay < 0) return;
 
         // 确保startSection <= endSection
@@ -351,20 +417,91 @@ public class TimeTableView extends View {
         resetSelection();
     }
 
+    private void handleLongPress() {
+        if (longPressedSlot != null) {
+            isLongPressTriggered = true;
+            removeTimeSlot(longPressedSlot);
+
+            // 显示删除成功的Toast
+            String dayStr = getDayString(longPressedSlot.getDay());
+            String message = "已删除周" + dayStr + " 第" + (longPressedSlot.getStartSection() + 1) +
+                    "-" + (longPressedSlot.getEndSection() + 1) + "节";
+            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+
+            invalidate();
+        }
+    }
+
+    private TimeSlot findTimeSlotAt(int day, int section) {
+        List<TimeSlot> daySlots = timeSlotsMap.get(day);
+        if (daySlots != null) {
+            for (TimeSlot slot : daySlots) {
+                if (slot.contains(section)) {
+                    return slot;
+                }
+            }
+        }
+        return null;
+    }
+
+    // ========== 智能合并时间段算法 ==========
+
+    /**
+     * 合并指定天的所有相邻或重叠的时间段[2](@ref)
+     */
+    private void mergeTimeSlots(int day) {
+        List<TimeSlot> daySlots = timeSlotsMap.get(day);
+        if (daySlots == null || daySlots.size() <= 1) {
+            return;
+        }
+
+        // 按开始时间排序[2](@ref)
+        Collections.sort(daySlots);
+
+        List<TimeSlot> merged = new ArrayList<>();
+        TimeSlot current = daySlots.get(0);
+
+        for (int i = 1; i < daySlots.size(); i++) {
+            TimeSlot next = daySlots.get(i);
+
+            // 检查是否重叠或相邻[2](@ref)
+            if (current.overlaps(next) || current.isAdjacent(next)) {
+                // 合并时间段
+                current.mergeWith(next);
+            } else {
+                merged.add(current);
+                current = next;
+            }
+        }
+        merged.add(current);
+
+        // 更新合并后的时间段
+        timeSlotsMap.put(day, merged);
+    }
+
     private boolean canAddTimeSlot(int day, TimeSlot newSlot) {
         List<TimeSlot> daySlots = timeSlotsMap.get(day);
         if (daySlots.size() >= MAX_SLOTS_PER_DAY) {
-            return false;
-        }
+            // 检查合并后是否还能添加
+            List<TimeSlot> testSlots = new ArrayList<>(daySlots);
+            testSlots.add(newSlot);
+            Collections.sort(testSlots);
 
-        // 检查是否与现有时间段重叠
-        for (TimeSlot existingSlot : daySlots) {
-            if (existingSlot.isSelected()) {
-                if (newSlot.getStartSection() <= existingSlot.getEndSection() &&
-                        newSlot.getEndSection() >= existingSlot.getStartSection()) {
-                    return false;
+            List<TimeSlot> testMerged = new ArrayList<>();
+            TimeSlot current = testSlots.get(0);
+
+            for (int i = 1; i < testSlots.size(); i++) {
+                TimeSlot next = testSlots.get(i);
+                if (current.overlaps(next) || current.isAdjacent(next)) {
+                    current.mergeWith(next);
+                } else {
+                    testMerged.add(current);
+                    current = next;
                 }
             }
+            testMerged.add(current);
+
+            return testMerged.size() <= MAX_SLOTS_PER_DAY;
         }
 
         return true;
@@ -377,6 +514,8 @@ public class TimeTableView extends View {
         List<TimeSlot> daySlots = timeSlotsMap.get(day);
         if (daySlots != null) {
             daySlots.add(timeSlot);
+            // 添加后立即合并相邻时间段[2](@ref)
+            mergeTimeSlots(day);
             notifyTimeSlotCreated(timeSlot);
             invalidate();
         }
@@ -388,6 +527,8 @@ public class TimeTableView extends View {
         int day = timeSlot.getDay();
         List<TimeSlot> daySlots = timeSlotsMap.get(day);
         if (daySlots != null && daySlots.remove(timeSlot)) {
+            // 删除后重新合并剩余时间段
+            mergeTimeSlots(day);
             notifyTimeSlotRemoved(timeSlot);
             invalidate();
         }
@@ -422,6 +563,14 @@ public class TimeTableView extends View {
         currentStartSection = -1;
         currentEndSection = -1;
         invalidate();
+    }
+
+    private String getDayString(int day) {
+        String[] days = {"一", "二", "三", "四", "五", "六", "日"};
+        if (day >= 0 && day < days.length) {
+            return days[day];
+        }
+        return "未知";
     }
 
     // 监听器管理
@@ -460,6 +609,10 @@ public class TimeTableView extends View {
     public Map<Integer, List<TimeSlot>> getTimeSlotsMap() { return timeSlotsMap; }
     public void setTimeSlotsMap(Map<Integer, List<TimeSlot>> timeSlotsMap) {
         this.timeSlotsMap = timeSlotsMap;
+        // 设置新数据后合并所有天的时间段
+        for (int i = 0; i < COLUMN_COUNT; i++) {
+            mergeTimeSlots(i);
+        }
         invalidate();
     }
 
@@ -475,5 +628,12 @@ public class TimeTableView extends View {
         this.timeSlotColor = timeSlotColor;
         timeSlotPaint.setColor(timeSlotColor);
         invalidate();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        // 清除所有Handler回调，防止内存泄漏
+        longPressHandler.removeCallbacksAndMessages(null);
     }
 }

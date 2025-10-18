@@ -3,7 +3,7 @@ package com.pku.or.courseassistant.view;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-public class TimeSlot implements Parcelable {
+public class TimeSlot implements Parcelable, Comparable<TimeSlot> {
     private int day; // 0-6 代表周一到周日
     private int startSection; // 起始节次 0-11
     private int endSection; // 结束节次 0-11
@@ -51,8 +51,31 @@ public class TimeSlot implements Parcelable {
         return section >= startSection && section <= endSection;
     }
 
+    public boolean overlaps(TimeSlot other) {
+        if (this.day != other.day) return false;
+        return this.startSection <= other.endSection && other.startSection <= this.endSection;
+    }
+
+    public boolean isAdjacent(TimeSlot other) {
+        if (this.day != other.day) return false;
+        return this.endSection + 1 == other.startSection || other.endSection + 1 == this.startSection;
+    }
+
+    public void mergeWith(TimeSlot other) {
+        this.startSection = Math.min(this.startSection, other.startSection);
+        this.endSection = Math.max(this.endSection, other.endSection);
+    }
+
     public int getSectionCount() {
         return endSection - startSection + 1;
+    }
+
+    @Override
+    public int compareTo(TimeSlot other) {
+        if (this.day != other.day) {
+            return Integer.compare(this.day, other.day);
+        }
+        return Integer.compare(this.startSection, other.startSection);
     }
 
     @Override
