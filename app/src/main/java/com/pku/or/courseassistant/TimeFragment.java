@@ -81,7 +81,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
     }
 
     private void loadData() {
-        SharedPreferences prefs = getActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         // 加载周数据
         String weekDataJson = prefs.getString(KEY_WEEK_DATA, null);
@@ -99,18 +99,34 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
     }
 
     private void saveData() {
-        SharedPreferences prefs = getActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        saveData(false);
+    }
+
+    /**
+     * @param sync 如果为 true 则使用 commit() 同步写入（用于生命周期钩子），否则使用 apply() 异步写入
+     */
+    private void saveData(boolean sync) {
+        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
+
+        // 确保使用视图中的最新周数据
+        currentWeekData = timeTableView.getCurrentWeekData();
 
         // 保存周数据
         Gson gson = new Gson();
         String weekDataJson = gson.toJson(currentWeekData);
         editor.putString(KEY_WEEK_DATA, weekDataJson);
 
-        // 保存当前日期
-        editor.putLong(KEY_CURRENT_DATE, System.currentTimeMillis());
+        // 保存当前日期：优先使用 timeTableView 的 startDate（若存在）
+        java.util.Date startDate = timeTableView.getStartDate();
+        long dateMillis = (startDate != null) ? startDate.getTime() : System.currentTimeMillis();
+        editor.putLong(KEY_CURRENT_DATE, dateMillis);
 
-        editor.apply();
+        if (sync) {
+            editor.commit();
+        } else {
+            editor.apply();
+        }
     }
 
     @Override
@@ -178,7 +194,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
     @Override
     public void onPause() {
         super.onPause();
-        saveData();
+        saveData(true); // 在生命周期关键点使用同步保存，提升可靠性
     }
 
     @Override
@@ -187,6 +203,6 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
         if (timeTableView != null) {
             timeTableView.removeOnTimeSelectListener(this);
         }
-        saveData();
+        saveData(true); // 确保同步
     }
 }

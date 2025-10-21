@@ -34,7 +34,7 @@ public class TimeTableView extends View {
     private static final int ROW_COUNT = 12; // 12节课
     private static final int COLUMN_COUNT = 7; // 7天
     private static final int MAX_SLOTS_PER_DAY = 6; // 每天最多6个条形
-    private static final long LONG_PRESS_DURATION = 3000; // 长按3秒
+    private static final long LONG_PRESS_DURATION = 1500; // 长按3秒
 
     // 属性变量
     private int gridLineColor;
@@ -486,6 +486,14 @@ public class TimeTableView extends View {
     }
 
     /**
+     * 返回当前视图使用的开始日期（Date），若未设置则返回 null。
+     */
+    public java.util.Date getStartDate() {
+        if (currentStartDate == null) return null;
+        return currentStartDate.getTime();
+    }
+
+    /**
      * 检查日期是否是今天
      */
     private boolean isToday(Date date) {
@@ -779,8 +787,13 @@ public class TimeTableView extends View {
     public void setWeekData(WeekTimeData weekData) {
         if (weekData == null) return;
 
+        // 确保日期头部已经初始化
+        if (headerDates[0] == null) {
+            setStartDate(Calendar.getInstance().getTime());
+        }
+
         clearTimeSlots();
-        currentWeekData = weekData;
+        currentWeekData = new WeekTimeData(weekData); // 使用拷贝构造函数
 
         // 根据当前显示的日期加载数据
         for (int day = 0; day < COLUMN_COUNT; day++) {

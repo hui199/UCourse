@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 支持按日期存储的空闲时间数据
@@ -33,7 +34,15 @@ public class WeekTimeData implements Serializable {
     public WeekTimeData(WeekTimeData other) {
         this();
         if (other != null) {
-            this.dateTimeData = new HashMap<>(other.dateTimeData);
+            // 深拷贝
+            this.dateTimeData = new HashMap<>();
+            for (Map.Entry<String, List<TimeRange>> entry : other.dateTimeData.entrySet()) {
+                List<TimeRange> copiedList = new ArrayList<>();
+                for (TimeRange range : entry.getValue()) {
+                    copiedList.add(new TimeRange(range));
+                }
+                this.dateTimeData.put(entry.getKey(), copiedList);
+            }
             this.weekStartDate = other.weekStartDate;
             this.weekEndDate = other.weekEndDate;
         }
@@ -111,6 +120,20 @@ public class WeekTimeData implements Serializable {
         return sdf.format(date);
     }
 
+    // 重写 equals 和 hashCode 方法
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        WeekTimeData that = (WeekTimeData) o;
+        return Objects.equals(dateTimeData, that.dateTimeData);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(dateTimeData);
+    }
+
     /**
      * 时间段内部类
      */
@@ -121,6 +144,12 @@ public class WeekTimeData implements Serializable {
         public TimeRange(int startSection, int endSection) {
             this.startSection = startSection;
             this.endSection = endSection;
+        }
+
+        // 增加拷贝构造函数
+        public TimeRange(TimeRange other) {
+            this.startSection = other.startSection;
+            this.endSection = other.endSection;
         }
 
         public int getStartSection() { return startSection; }
@@ -144,6 +173,20 @@ public class WeekTimeData implements Serializable {
                     "startSection=" + startSection +
                     ", endSection=" + endSection +
                     '}';
+        }
+
+        // 重写 equals 和 hashCode 方法
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TimeRange timeRange = (TimeRange) o;
+            return startSection == timeRange.startSection && endSection == timeRange.endSection;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(startSection, endSection);
         }
     }
 
