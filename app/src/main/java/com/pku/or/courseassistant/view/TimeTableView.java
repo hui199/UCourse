@@ -87,6 +87,10 @@ public class TimeTableView extends View {
     private Calendar currentStartDate; // 当前显示的开始日期
     private Date[] headerDates = new Date[7]; // 存储每个标题的日期
     private SimpleDateFormat headerDateFormat;
+    // 布局偏移与自适应字段
+    private float leftVisualMargin = 0f; // 视觉上的左侧空白（px）
+    private float rightVisualMargin = 0f; // 视觉上的右侧空白（px）
+    private float contentOffsetX = 0f; // 绘制时的 X 偏移（px）
 
     // 星期标题
     private String[] weekDays = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
@@ -270,12 +274,60 @@ public class TimeTableView extends View {
             height = Math.min(desiredHeight, MeasureSpec.getSize(heightMeasureSpec));
         }
 
+        // 重新根据最终宽度计算每列宽度，确保七列平均分配剩余空间，避免最后一列被截断
+        // 计算侧边栏宽度：确保能完整显示节次与 timeRanges（包裹内容）
+        float maxSideTextWidth = 0f;
+        for (String s : sectionNumbers) {
+            maxSideTextWidth = Math.max(maxSideTextWidth, textPaint.measureText(s));
+        }
+        for (String t : timeRanges) {
+            maxSideTextWidth = Math.max(maxSideTextWidth, timeTextPaint.measureText(t));
+        }
+        // 增加 padding
+        float desiredSideBar = Math.max(sideBarWidth, maxSideTextWidth + dpToPx(12));
+
+        // 计算视觉左右边距（取总宽的 6% 左右，但在小屏幕上不超过一定像素）
+        leftVisualMargin = Math.max(dpToPx(8), width * 0.06f);
+        rightVisualMargin = leftVisualMargin;
+
+        // 计算可用于七列的宽度
+        int totalPadding = getPaddingLeft() + getPaddingRight();
+        float remainingForColumns = width - leftVisualMargin - rightVisualMargin - desiredSideBar - totalPadding;
+        if (remainingForColumns < dpToPx(40) * COLUMN_COUNT) {
+            // 保证最小列宽，如果不足则缩小左右边距
+            float minTotalForColumns = dpToPx(40) * COLUMN_COUNT;
+            float shortage = minTotalForColumns - remainingForColumns;
+            float reduceEach = Math.min(shortage / 2f, leftVisualMargin - dpToPx(4));
+            leftVisualMargin = Math.max(dpToPx(4), leftVisualMargin - reduceEach);
+            rightVisualMargin = leftVisualMargin;
+            remainingForColumns = width - leftVisualMargin - rightVisualMargin - desiredSideBar - totalPadding;
+        }
+
+        // 设置最终 sideBarWidth 与 cellWidth
+        sideBarWidth = desiredSideBar;
+        if (remainingForColumns > 0) {
+            cellWidth = remainingForColumns / (float) COLUMN_COUNT;
+        } else {
+            cellWidth = dpToPx(40);
+        }
+
+        // 内容绘制偏移量（左侧视觉空白）
+        contentOffsetX = leftVisualMargin;
+
         setMeasuredDimension(width, height);
+    }
+
+    private float dpToPx(float dp) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+
+        // 将画布向右平移，保留左侧视觉空白
+        canvas.save();
+        canvas.translate(contentOffsetX, 0);
 
         drawGrid(canvas);
         drawHeaders(canvas);
@@ -283,6 +335,8 @@ public class TimeTableView extends View {
         drawTimeSlots(canvas);
         drawCurrentSelection(canvas);
         drawLongPressEffect(canvas);
+
+        canvas.restore();
     }
 
     private void drawGrid(Canvas canvas) {
@@ -450,6 +504,34 @@ public class TimeTableView extends View {
         // 计算从今天开始的一周
         calculateWeekFromToday(selectedDate);
         updateDateHeaders();
+        // 切换起始日期后，只把 currentWeekData 中与新 headerDates 匹配的日期加载到对应列，
+        // 避免直接 clearTimeSlots() 导致所有数据消失。
+        Map<Integer, List<TimeSlot>> newMap = new HashMap<>();
+        for (int i = 0; i < COLUMN_COUNT; i++) {
+            newMap.put(i, new ArrayList<TimeSlot>());
+        }
+
+        if (currentWeekData != null) {
+            for (int i = 0; i < COLUMN_COUNT; i++) {
+                Date d = headerDates[i];
+                List<WeekTimeData.TimeRange> ranges = currentWeekData.getDateTimeRanges(d);
+                if (ranges != null) {
+                    for (WeekTimeData.TimeRange r : ranges) {
+                        TimeSlot slot = new TimeSlot(i, r.getStartSection(), r.getEndSection());
+                        newMap.get(i).add(slot);
+                    }
+                }
+            }
+        }
+
+        // 替换映射并合并/更新状态
+        timeSlotsMap = newMap;
+        for (int i = 0; i < COLUMN_COUNT; i++) {
+            mergeTimeSlots(i);
+        }
+        // 更新 currentWeekData（基于新的 headerDates）并通知监听器
+        updateWeekData();
+        notifyTimeSlotsChanged();
         invalidate();
     }
 
@@ -565,11 +647,11 @@ public class TimeTableView extends View {
     }
 
     private void handleActionDown(float x, float y) {
-        if (x < sideBarWidth || y < headerHeight) {
+        float adjustedX = x - contentOffsetX;
+        if (adjustedX < sideBarWidth || y < headerHeight) {
             return;
         }
-
-        int day = (int) ((x - sideBarWidth) / cellWidth);
+        int day = (int) ((adjustedX - sideBarWidth) / cellWidth);
         int section = (int) ((y - headerHeight) / cellHeight);
 
         if (day >= 0 && day < COLUMN_COUNT && section >= 0 && section < ROW_COUNT) {
@@ -592,6 +674,7 @@ public class TimeTableView extends View {
     }
 
     private void handleActionMove(float x, float y) {
+        float adjustedX = x - contentOffsetX;
         if (longPressedSlot != null) {
             longPressHandler.removeCallbacks(longPressRunnable);
             longPressedSlot = null;
@@ -599,9 +682,9 @@ public class TimeTableView extends View {
             invalidate();
         }
 
-        if (!isSelecting || currentDay < 0) return;
+    if (!isSelecting || currentDay < 0) return;
 
-        int section = (int) ((y - headerHeight) / cellHeight);
+    int section = (int) ((y - headerHeight) / cellHeight);
         section = Math.max(0, Math.min(section, ROW_COUNT - 1));
 
         if (section != currentEndSection) {

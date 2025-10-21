@@ -61,6 +61,15 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
+
+        // 确保底部导航的初始高亮与当前显示的 Fragment 一致
+        if (activeFragment == homeFragment) {
+            bottomNavigationView.setSelectedItemId(R.id.navigation_home);
+        } else if (activeFragment == timeFragment) {
+            bottomNavigationView.setSelectedItemId(R.id.navigation_time);
+        } else {
+            bottomNavigationView.setSelectedItemId(R.id.navigation_result);
+        }
     }
     private void switchFragment(Fragment targetFragment) {
         if (targetFragment == activeFragment) {

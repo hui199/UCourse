@@ -37,7 +37,8 @@ public class TimeViewModel extends AndroidViewModel {
             WeekTimeData loadedData = gson.fromJson(weekDataJson, WeekTimeData.class);
             weekTimeData.setValue(loadedData);
         } else {
-            weekTimeData.setValue(new WeekTimeData()); // 确保 LiveData 有初始值
+            // 不要在没有数据时自动写入空对象，留给调用方决定何时初始化
+            weekTimeData.setValue(null);
         }
     }
 

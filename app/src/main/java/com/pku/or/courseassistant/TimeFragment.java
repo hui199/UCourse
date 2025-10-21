@@ -45,8 +45,9 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
         View view = inflater.inflate(R.layout.fragment_time, container, false);
 
         initViews(view);
-        setupListeners();
+        // 先加载持久化数据，再注册监听器，避免 TimeTableView 初始化时触发空回调导致覆盖已保存数据
         loadData();
+        setupListeners();
 
         return view;
     }
@@ -83,18 +84,26 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
     private void loadData() {
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
-        // 加载周数据
+        // 加载当前日期（先设置 startDate，确保后续的 setWeekData 按当前 7 天映射）
+        long savedDate = prefs.getLong(KEY_CURRENT_DATE, -1);
+        if (savedDate != -1) {
+            timeTableView.setStartDate(new java.util.Date(savedDate));
+        }
+
+        // 加载周数据（再设置 weekData）
         String weekDataJson = prefs.getString(KEY_WEEK_DATA, null);
         if (weekDataJson != null) {
             Gson gson = new Gson();
             currentWeekData = gson.fromJson(weekDataJson, WeekTimeData.class);
+            // 只将与当前 7 天匹配的日期加载到视图中；setWeekData 已按 headerDates 加载，但为防止残留，先清空视图
+            timeTableView.clearTimeSlots();
             timeTableView.setWeekData(currentWeekData);
-        }
-
-        // 加载当前日期
-        long savedDate = prefs.getLong(KEY_CURRENT_DATE, -1);
-        if (savedDate != -1) {
-            timeTableView.setStartDate(new java.util.Date(savedDate));
+            // loaded week data
+        } else {
+            // 无已保存数据，确保视图为空
+            timeTableView.clearTimeSlots();
+            currentWeekData = new WeekTimeData();
+            // no saved week data
         }
     }
 
