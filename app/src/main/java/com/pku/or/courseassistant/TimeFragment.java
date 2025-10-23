@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
+import android.util.Log;
 
 import androidx.fragment.app.Fragment;
 
@@ -82,6 +83,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
     }
 
     private void loadData() {
+    // loadData: starting
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         // 加载当前日期（先设置 startDate，确保后续的 setWeekData 按当前 7 天映射）
@@ -93,6 +95,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
         // 加载周数据（再设置 weekData）
         String weekDataJson = prefs.getString(KEY_WEEK_DATA, null);
         if (weekDataJson != null) {
+            // loaded week data
             Gson gson = new Gson();
             currentWeekData = gson.fromJson(weekDataJson, WeekTimeData.class);
             // 只将与当前 7 天匹配的日期加载到视图中；setWeekData 已按 headerDates 加载，但为防止残留，先清空视图
@@ -100,6 +103,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
             timeTableView.setWeekData(currentWeekData);
             // loaded week data
         } else {
+            // no saved week data
             // 无已保存数据，确保视图为空
             timeTableView.clearTimeSlots();
             currentWeekData = new WeekTimeData();
@@ -115,6 +119,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
      * @param sync 如果为 true 则使用 commit() 同步写入（用于生命周期钩子），否则使用 apply() 异步写入
      */
     private void saveData(boolean sync) {
+        // saveData sync=
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
 
@@ -204,6 +209,7 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
     public void onPause() {
         super.onPause();
         saveData(true); // 在生命周期关键点使用同步保存，提升可靠性
+    // onPause: saved data synced
     }
 
     @Override
@@ -213,5 +219,6 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
             timeTableView.removeOnTimeSelectListener(this);
         }
         saveData(true); // 确保同步
+    // onDestroyView: saved data and removed listeners
     }
 }

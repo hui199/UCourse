@@ -15,4 +15,24 @@
 
     <!-- 今天高亮色 -->
     <color name="today_highlight_color">#81C784</color>
+    <!-- sheet visuals -->
+    <color name="sheet_gutter_color">#22000000</color>
+    <color name="sheet_group_bg_even">#FFFFFFFF</color>
+    <color name="sheet_group_bg_odd">#FFF8F9FB</color>
+    <!-- accent colors for gradient -->
+    <color name="accent_start">#FF7CFC</color>
+    <color name="accent_mid">#7C4DFF</color>
+    <color name="accent_end">#3F51B5</color>
+    <!-- helper colors for adapter visual refinement -->
+    <color name="black">#000000</color>
+    <color name="gray_900">#212121</color>
+    <color name="gray_800">#424242</color>
+    <color name="gray_700">#616161</color>
+    <color name="gray_600">#757575</color>
+    <color name="sheet_row_bg">#FFFDFDFD</color>
+    <!-- card and divider refinements -->
+    <color name="card_elevated_bg">#FFFFFFFF</color>
+    <color name="card_normal_bg">#FFF7F8FB</color>
+    <color name="divider_color">#1F000000</color>
+        <color name="primaryColor">#FF6200EE</color>
 </resources>

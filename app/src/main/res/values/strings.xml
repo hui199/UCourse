@@ -10,4 +10,5 @@
     <string name="friday">周五</string>
     <string name="saturday">周六</string>
     <string name="sunday">周日</string>
+    <string name="navigation_courses">Courses</string>
 </resources>
