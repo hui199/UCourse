@@ -186,17 +186,14 @@ public class HomeFragment extends Fragment {
     // Merge parsed courses into VM with overwrite semantics: remove any existing courses that came from the same fileId and same sheetName before adding new ones.
     private void mergeParsedCourses(List<Course> parsed) {
     if (parsed == null || parsed.isEmpty()) return;
+        
         List<Course> cur = vm.courses.getValue();
         if (cur == null) cur = new ArrayList<>();
         // collect keys to replace (fileId|sheetName) present in parsed
         Set<String> keysToReplace = new HashSet<>();
-        // also collect (fileId|title|rawTime) triples from parsed to catch duplicates when sheetName format changed
-        Set<String> triplesToReplace = new HashSet<>();
         for (Course p : parsed) {
             String k = (p.fileId == null ? "<nofile>" : p.fileId) + "|" + (p.sheetName == null ? "<nosheet>" : p.sheetName);
             keysToReplace.add(k);
-            String t = (p.fileId == null ? "<nofile>" : p.fileId) + "|" + (p.title == null ? "" : p.title) + "|" + (p.rawTime == null ? "" : p.rawTime);
-            triplesToReplace.add(t);
         }
         List<Course> remaining = new ArrayList<>();
         for (Course ex : cur) {
@@ -205,16 +202,22 @@ public class HomeFragment extends Fragment {
                 // exact sheet replacement requested, skip (remove old)
                 continue;
             }
-            // also remove if fileId+title+rawTime matches any newly parsed course (handles cases where sheetName format changed)
-            String et = (ex.fileId == null ? "<nofile>" : ex.fileId) + "|" + (ex.title == null ? "" : ex.title) + "|" + (ex.rawTime == null ? "" : ex.rawTime);
-            if (triplesToReplace.contains(et)) {
-                // duplicate record found (likely previous import used different sheetName); skip
-                continue;
-            }
             remaining.add(ex);
         }
         remaining.addAll(parsed);
         vm.save(remaining);
+        // ensure newly imported files are collapsed by default so their sheets are not auto-expanded
+        try {
+            if (parsed != null && !parsed.isEmpty() && adapter != null) {
+                java.util.Set<String> newFiles = new java.util.HashSet<>();
+                for (Course p : parsed) {
+                    String f = p.fileId == null ? "<nofile>" : p.fileId;
+                    newFiles.add(f);
+                }
+                // collapse these files in adapter (no-op if already collapsed)
+                adapter.collapseFiles(newFiles);
+            }
+        } catch (Throwable _t) { /* ignore */ }
     }
 
     @Override
@@ -237,6 +240,7 @@ public class HomeFragment extends Fragment {
     private void handleUri(Uri uri) {
         // Run parsing off the UI thread to avoid UI jank for large files
         parserExecutor.submit(() -> {
+            
             // reset per-import 'apply to all' flag so each import starts fresh
             applyMappingToAll = false;
             try (InputStream is = getContext().getContentResolver().openInputStream(uri)) {
@@ -290,6 +294,7 @@ public class HomeFragment extends Fragment {
                 } else {
                     XlsxLightParser xp = new XlsxLightParser();
                     XlsxLightParser.ParseResult pr = xp.parse(is);
+                    
                     // for MVP, concatenate all sheets rows
                     // we'll iterate sheets and allow reuse/apply-to-all behavior
                     // collect pending sheets that need manual mapping
@@ -359,14 +364,24 @@ public class HomeFragment extends Fragment {
     }
 
     private void processNextPending(Iterator<PendingSheet> it, List<Course> parsed, String path) {
-        if (!it.hasNext()) return;
+        if (!it.hasNext()) {
+            // all pending sheets processed; ensure any accumulated parsed courses are merged once
+            try {
+                if (parsed != null && !parsed.isEmpty()) {
+                    getActivity().runOnUiThread(() -> mergeParsedCourses(parsed));
+                }
+            } catch (Throwable _t) { /* ignore */ }
+            return;
+        }
         PendingSheet ps = it.next();
+        
         List<String> headers = new ArrayList<>();
         for (String h : ps.header) headers.add(h == null ? "" : h);
                 ColumnMapDialogFragment dlg = new ColumnMapDialogFragment(headers, new ColumnMapDialogFragment.Listener() {
             @Override
             public void onMapping(ColumnMapDialogFragment.MappingResult result) {
                 previousMapping = result;
+                
                 if (result.applyToAll) applyMappingToAll = true;
                         List<String[]> dataRows = ps.rows.size() > 1 ? ps.rows.subList(1, ps.rows.size()) : new ArrayList<>();
                         // log sample values from the sheet header and first data row to help debug mapping
@@ -374,6 +389,7 @@ public class HomeFragment extends Fragment {
 
                                 parserExecutor.submit(() -> {
                                     List<Course> p = Course.fromRows(path, ps.name, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx);
+                                    
                                     // merge into parsed in background list
                                     synchronized (parsed) { parsed.addAll(p); }
                                     // save immediately so UI will show grouped title for this sheet

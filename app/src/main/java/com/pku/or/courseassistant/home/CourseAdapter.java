@@ -41,6 +41,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     // store expansion state across updates
     private final Set<String> expandedFiles = new HashSet<>();
     private final Set<String> expandedSheets = new HashSet<>();
+    // cached sheet count per file computed when rebuilding display
+    private final Map<String, Integer> sheetCountByFile = new java.util.HashMap<>();
     // long-press listener
     public interface OnItemLongPressListener {
         void onItemLongPress(int type, String id, int position);
@@ -86,6 +88,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         }
         for (Map.Entry<String, Map<String, List<Course>>> fe : byFile.entrySet()) {
             String fileId = fe.getKey();
+            // record sheet count for this file for badge display
+            try { sheetCountByFile.put(fileId, fe.getValue() == null ? 0 : fe.getValue().size()); } catch (Throwable _t) { sheetCountByFile.put(fileId, 0); }
             Item fileItem = new Item();
             fileItem.type = TYPE_FILE;
             fileItem.id = fileId;
@@ -146,15 +150,10 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             String base = full;
             int idx = full.lastIndexOf('/');
             if (idx >= 0 && idx < full.length()-1) base = full.substring(idx+1);
-            // compute unique sheet count for this file
-            Set<String> sheetNames = new HashSet<>();
-            for (Course cc : rawCourses) {
-                String f = cc.fileId == null ? "<nofile>" : cc.fileId;
-                if (f.equals(it.id)) {
-                    sheetNames.add(cc.sheetName == null ? "<nosheet>" : cc.sheetName);
-                }
-            }
-            String titleWithCount = base + " (" + sheetNames.size() + ")";
+            // use cached sheet count computed during display rebuild
+            int sheetCount = 0;
+            try { sheetCount = sheetCountByFile.getOrDefault(it.id == null ? "<nofile>" : it.id, 0); } catch (Throwable _t) { sheetCount = 0; }
+            String titleWithCount = base + " (" + sheetCount + ")";
             // truncate long titles: if > 40 chars show first half
             String disp = maybeTruncate(titleWithCount);
             vh.tvTitle.setText(disp);
@@ -165,7 +164,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             try {
                 android.widget.TextView tvCount = vh.itemView.findViewById(R.id.tv_count);
                 if (tvCount != null) {
-                    tvCount.setText("[" + sheetNames.size() + "]");
+                    tvCount.setText("[" + sheetCount + "]");
                     // tint count slightly using accent end color
                     int accent = generateAccentEndForKey(it.id == null ? "<nofile>" : it.id);
                     tvCount.setTextColor(accent);
@@ -347,6 +346,52 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     public String getParentIdForPosition(int position) {
         if (position < 0 || position >= display.size()) return null;
         return display.get(position).parentId;
+    }
+
+    // Programmatic collapse helpers: ensure files/sheets are collapsed (used after import)
+    public void collapseFile(String fileId) {
+        if (fileId == null) return;
+        if (expandedFiles.remove(fileId)) {
+            // also remove any expanded sheets under this file
+            java.util.Iterator<String> it = expandedSheets.iterator();
+            String prefix = fileId + "|";
+            while (it.hasNext()) {
+                String s = it.next();
+                if (s != null && s.startsWith(prefix)) it.remove();
+            }
+            // refresh display
+            List<Item> newDisplay = buildDisplayFromRaw();
+            applyDisplayDiff(newDisplay);
+        }
+    }
+
+    public void collapseFiles(java.util.Collection<String> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) return;
+        boolean changed = false;
+        for (String fileId : fileIds) {
+            if (fileId == null) continue;
+            if (expandedFiles.remove(fileId)) changed = true;
+            String prefix = fileId + "|";
+            java.util.Iterator<String> it = expandedSheets.iterator();
+            while (it.hasNext()) {
+                String s = it.next();
+                if (s != null && s.startsWith(prefix)) { it.remove(); changed = true; }
+            }
+        }
+        if (changed) {
+            List<Item> newDisplay = buildDisplayFromRaw();
+            applyDisplayDiff(newDisplay);
+        }
+    }
+
+
+
+    // Collapse all files
+    public void collapseAllFiles() {
+        if (expandedFiles.isEmpty()) return;
+        expandedFiles.clear();
+        List<Item> newDisplay = buildDisplayFromRaw();
+        applyDisplayDiff(newDisplay);
     }
 
     static class VH extends RecyclerView.ViewHolder {

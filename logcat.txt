@@ -1,313 +1,134 @@
-10-23 12:05:33.343 I/MainActivity( 6845): switchFragment: target=HomeFragment
-10-23 12:05:33.636 I/HomeFragment( 6845): onCreate
-10-23 12:05:34.791 I/HomeFragment( 6845): onCreateView
-10-23 12:05:34.801 D/HomeFragment( 6845): onStart
-10-23 12:05:34.831 D/HomeFragment( 6845): onResume
-10-23 12:05:37.147 I/MainActivity( 6845): switchFragment: target=HomeFragment
-10-23 12:05:38.471 I/HomeFragment( 6845): btn_import touch: action=0
-10-23 12:05:38.582 I/HomeFragment( 6845): btn_import touch: action=1
-10-23 12:05:38.599 I/HomeFragment( 6845): 导入按钮被点击
-10-23 12:05:38.626 I/HomeFragment( 6845): launching ActivityResultLauncher
-10-23 12:05:44.116 D/HomeFragment( 6845): onStart
-10-23 12:05:44.130 I/HomeFragment( 6845): ActivityResultLauncher callback: resultCode=-1
-10-23 12:05:44.131 D/HomeFragment( 6845): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:05:44.147 D/HomeFragment( 6845): onResume
-10-23 12:07:42.061 I/MainActivity( 6845): switchFragment: target=HomeFragment
-10-23 12:07:48.421 I/MainActivity( 6845): switchFragment: target=HomeFragment
-10-23 12:14:55.126 I/MainActivity( 6966): switchFragment: target=HomeFragment
-10-23 12:14:55.463 I/HomeFragment( 6966): onCreate
-10-23 12:14:57.218 I/HomeFragment( 6966): onCreateView
-10-23 12:14:57.224 D/HomeFragment( 6966): onStart
-10-23 12:14:57.247 D/HomeFragment( 6966): onResume
-10-23 12:14:59.673 I/MainActivity( 6966): switchFragment: target=HomeFragment
-10-23 12:15:02.585 I/HomeFragment( 6966): btn_import touch: action=0
-10-23 12:15:02.695 I/HomeFragment( 6966): btn_import touch: action=1
-10-23 12:15:02.712 I/HomeFragment( 6966): 导入按钮被点击
-10-23 12:15:02.728 I/HomeFragment( 6966): launching ActivityResultLauncher
-10-23 12:15:06.811 D/HomeFragment( 6966): onStart
-10-23 12:15:06.817 I/HomeFragment( 6966): ActivityResultLauncher callback: resultCode=-1
-10-23 12:15:06.817 D/HomeFragment( 6966): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:15:06.829 D/HomeFragment( 6966): onResume
-10-23 12:15:46.980 I/MainActivity( 7078): switchFragment: target=HomeFragment
-10-23 12:15:47.184 I/HomeFragment( 7078): onCreate
-10-23 12:15:47.260 I/HomeFragment( 7078): onCreateView
-10-23 12:15:47.271 D/HomeFragment( 7078): onStart
-10-23 12:15:47.313 D/HomeFragment( 7078): onResume
-10-23 12:15:49.601 I/MainActivity( 7078): switchFragment: target=HomeFragment
-10-23 12:15:50.540 I/HomeFragment( 7078): btn_import touch: action=0
-10-23 12:15:50.682 I/HomeFragment( 7078): btn_import touch: action=1
-10-23 12:15:50.701 I/HomeFragment( 7078): 导入按钮被点击
-10-23 12:15:50.723 I/HomeFragment( 7078): launching ActivityResultLauncher
-10-23 12:15:56.353 D/HomeFragment( 7078): onStart
-10-23 12:15:56.361 I/HomeFragment( 7078): ActivityResultLauncher callback: resultCode=-1
-10-23 12:15:56.361 D/HomeFragment( 7078): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:15:56.365 D/HomeFragment( 7078): onResume
-10-23 12:16:45.092 I/MainActivity( 7406): switchFragment: target=HomeFragment
-10-23 12:16:45.245 I/HomeFragment( 7406): onCreate
-10-23 12:16:45.355 I/HomeFragment( 7406): onCreateView
-10-23 12:16:45.371 D/HomeFragment( 7406): onStart
-10-23 12:16:45.412 D/HomeFragment( 7406): onResume
-10-23 12:16:47.765 I/HomeFragment( 7406): btn_import touch: action=0
-10-23 12:16:47.899 I/HomeFragment( 7406): btn_import touch: action=1
-10-23 12:16:47.926 I/HomeFragment( 7406): 导入按钮被点击
-10-23 12:16:48.004 I/HomeFragment( 7406): launching ActivityResultLauncher
-10-23 12:16:53.735 D/HomeFragment( 7406): onStart
-10-23 12:16:53.747 I/HomeFragment( 7406): ActivityResultLauncher callback: resultCode=-1
-10-23 12:16:53.747 D/HomeFragment( 7406): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:16:53.757 D/HomeFragment( 7406): onResume
-10-23 12:22:33.227 I/MainActivity( 7895): switchFragment: target=HomeFragment
-10-23 12:22:33.364 I/HomeFragment( 7895): onCreate
-10-23 12:22:33.433 I/HomeFragment( 7895): onCreateView
-10-23 12:22:33.445 D/HomeFragment( 7895): onStart
-10-23 12:22:33.478 D/HomeFragment( 7895): onResume
-10-23 12:23:04.992 I/HomeFragment( 7895): btn_import touch: action=0
-10-23 12:23:05.053 I/HomeFragment( 7895): btn_import touch: action=1
-10-23 12:23:05.761 I/HomeFragment( 7895): 导入按钮被点击
-10-23 12:23:05.845 I/HomeFragment( 7895): launching ActivityResultLauncher
-10-23 12:23:13.091 D/HomeFragment( 7895): onStart
-10-23 12:23:13.102 I/HomeFragment( 7895): ActivityResultLauncher callback: resultCode=-1
-10-23 12:23:13.102 D/HomeFragment( 7895): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:23:13.105 D/HomeFragment( 7895): onResume
-10-23 12:23:14.256 I/HomeFragment( 7895): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=0,time=7,teacher=4,unit=5)
-10-23 12:23:14.257 I/HomeFragment( 7895): autoMap XLSX sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课]
-10-23 12:23:14.270 I/HomeFragment( 7895): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=0,time=7,teacher=4,unit=5)
-10-23 12:23:14.271 I/HomeFragment( 7895): autoMap XLSX sampleRow=[4715012, 材料科学数学基础, 必修, 3, 陶国华(副教授), 深圳研究生院, 2025, , 开课专业：材料物理与化学/材料与化工]
-10-23 12:27:30.901 I/MainActivity( 8052): switchFragment: target=HomeFragment
-10-23 12:27:31.050 I/HomeFragment( 8052): onCreate
-10-23 12:27:31.399 I/HomeFragment( 8052): onCreateView
-10-23 12:27:31.407 D/HomeFragment( 8052): onStart
-10-23 12:27:31.431 D/HomeFragment( 8052): onResume
-10-23 12:27:34.081 I/HomeFragment( 8052): btn_import touch: action=0
-10-23 12:27:34.179 I/HomeFragment( 8052): btn_import touch: action=1
-10-23 12:27:34.219 I/HomeFragment( 8052): 导入按钮被点击
-10-23 12:27:34.314 I/HomeFragment( 8052): launching ActivityResultLauncher
-10-23 12:27:37.720 D/HomeFragment( 8052): onStart
-10-23 12:27:37.721 I/HomeFragment( 8052): ActivityResultLauncher callback: resultCode=-1
-10-23 12:27:37.721 D/HomeFragment( 8052): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:27:37.726 D/HomeFragment( 8052): onResume
-10-23 12:27:38.244 I/HomeFragment( 8052): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=0,time=7,teacher=4,unit=5)
-10-23 12:27:38.244 I/HomeFragment( 8052): autoMap XLSX sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课]
-10-23 12:27:38.275 I/HomeFragment( 8052): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=0,time=7,teacher=4,unit=5)
-10-23 12:27:38.276 I/HomeFragment( 8052): autoMap XLSX sampleRow=[4715012, 材料科学数学基础, 必修, 3, 陶国华(副教授), 深圳研究生院, 2025, , 开课专业：材料物理与化学/材料与化工]
-10-23 12:32:25.275 I/MainActivity( 8184): switchFragment: target=HomeFragment
-10-23 12:32:25.460 I/HomeFragment( 8184): onCreate
-10-23 12:32:26.113 I/HomeFragment( 8184): onCreateView
-10-23 12:32:26.120 D/HomeFragment( 8184): onStart
-10-23 12:32:26.152 D/HomeFragment( 8184): onResume
-10-23 12:32:29.151 I/HomeFragment( 8184): btn_import touch: action=0
-10-23 12:32:29.301 I/HomeFragment( 8184): btn_import touch: action=1
-10-23 12:32:29.320 I/HomeFragment( 8184): 导入按钮被点击
-10-23 12:32:29.339 I/HomeFragment( 8184): launching ActivityResultLauncher
-10-23 12:32:33.012 D/HomeFragment( 8184): onStart
-10-23 12:32:33.020 I/HomeFragment( 8184): ActivityResultLauncher callback: resultCode=-1
-10-23 12:32:33.020 D/HomeFragment( 8184): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:32:33.027 D/HomeFragment( 8184): onResume
-10-23 12:32:34.039 I/HomeFragment( 8184): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=1,time=7,teacher=4,unit=5)
-10-23 12:32:34.040 I/HomeFragment( 8184): autoMap XLSX sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课]
-10-23 12:32:34.041 I/HomeFragment( 8184): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=1,time=7,teacher=4,unit=5)
-10-23 12:32:34.041 I/HomeFragment( 8184): autoMap XLSX sampleRow=[4715012, 材料科学数学基础, 必修, 3, 陶国华(副教授), 深圳研究生院, 2025, , 开课专业：材料物理与化学/材料与化工]
-10-23 12:32:34.055 I/ColumnMapDialog( 8184): onCreateDialog headers=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:33:03.211 I/ColumnMapDialog( 8184): onOk mapping idx title=1(课程名) time=7(上课时间及教室) teacher=4(教师) unit=5(开课单位) applyAll=true
-10-23 12:33:03.211 I/HomeFragment( 8184): Applying mapping for sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课] mapping=(title=1,time=7,teacher=4,unit=5)
-10-23 12:33:20.448 I/HomeFragment( 8184): root view touch: action=0
-10-23 12:34:23.914 I/HomeFragment( 8184): btn_import touch: action=0
-10-23 12:34:24.045 I/HomeFragment( 8184): btn_import touch: action=1
-10-23 12:34:24.062 I/HomeFragment( 8184): 导入按钮被点击
-10-23 12:34:24.073 I/HomeFragment( 8184): launching ActivityResultLauncher
-10-23 12:34:27.652 D/HomeFragment( 8184): onStart
-10-23 12:34:27.657 I/HomeFragment( 8184): ActivityResultLauncher callback: resultCode=-1
-10-23 12:34:27.657 D/HomeFragment( 8184): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:34:27.664 D/HomeFragment( 8184): onResume
-10-23 12:34:28.164 I/HomeFragment( 8184): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=1,time=7,teacher=4,unit=5)
-10-23 12:34:28.165 I/HomeFragment( 8184): autoMap XLSX sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课]
-10-23 12:34:28.167 I/HomeFragment( 8184): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=1,time=7,teacher=4,unit=5)
-10-23 12:34:28.179 I/HomeFragment( 8184): autoMap XLSX sampleRow=[4715012, 材料科学数学基础, 必修, 3, 陶国华(副教授), 深圳研究生院, 2025, , 开课专业：材料物理与化学/材料与化工]
-10-23 12:34:28.191 I/ColumnMapDialog( 8184): onCreateDialog headers=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:34:36.268 I/ColumnMapDialog( 8184): onCreateDialog headers=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:34:46.637 I/HomeFragment( 8184): btn_import touch: action=0
-10-23 12:34:46.732 I/HomeFragment( 8184): btn_import touch: action=1
-10-23 12:34:46.735 I/HomeFragment( 8184): 导入按钮被点击
-10-23 12:34:46.748 I/HomeFragment( 8184): launching ActivityResultLauncher
-10-23 12:34:50.677 D/HomeFragment( 8184): onStart
-10-23 12:34:50.682 I/HomeFragment( 8184): ActivityResultLauncher callback: resultCode=-1
-10-23 12:34:50.682 D/HomeFragment( 8184): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:34:50.690 D/HomeFragment( 8184): onResume
-10-23 12:34:51.159 I/HomeFragment( 8184): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=1,time=7,teacher=4,unit=5)
-10-23 12:34:51.159 I/HomeFragment( 8184): autoMap XLSX sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课]
-10-23 12:34:51.160 I/HomeFragment( 8184): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=1,time=7,teacher=4,unit=5)
-10-23 12:34:51.161 I/HomeFragment( 8184): autoMap XLSX sampleRow=[4715012, 材料科学数学基础, 必修, 3, 陶国华(副教授), 深圳研究生院, 2025, , 开课专业：材料物理与化学/材料与化工]
-10-23 12:34:51.171 I/ColumnMapDialog( 8184): onCreateDialog headers=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:34:53.514 I/ColumnMapDialog( 8184): onOk mapping idx title=0(课程号) time=0(课程号) teacher=0(课程号) unit=0(课程号) applyAll=false
-10-23 12:34:53.514 I/HomeFragment( 8184): Applying mapping for sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课] mapping=(title=0,time=0,teacher=0,unit=0)
-10-23 12:34:53.613 I/ColumnMapDialog( 8184): onCreateDialog headers=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:34:54.627 I/ColumnMapDialog( 8184): onOk mapping idx title=0(课程号) time=0(课程号) teacher=0(课程号) unit=0(课程号) applyAll=false
-10-23 12:34:54.627 I/HomeFragment( 8184): Applying mapping for sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] sampleRow=[4715012, 材料科学数学基础, 必修, 3, 陶国华(副教授), 深圳研究生院, 2025, , 开课专业：材料物理与化学/材料与化工] mapping=(title=0,time=0,teacher=0,unit=0)
-10-23 12:43:51.208 I/MainActivity( 8408): switchFragment: target=HomeFragment
-10-23 12:43:51.357 I/HomeFragment( 8408): onCreate
-10-23 12:43:52.273 I/HomeFragment( 8408): onCreateView
-10-23 12:43:52.284 D/HomeFragment( 8408): onStart
-10-23 12:43:52.302 D/HomeFragment( 8408): onResume
-10-23 12:44:01.350 I/HomeFragment( 8408): btn_import touch: action=0
-10-23 12:44:01.440 I/HomeFragment( 8408): btn_import touch: action=1
-10-23 12:44:01.456 I/HomeFragment( 8408): 导入按钮被点击
-10-23 12:44:01.467 I/HomeFragment( 8408): launching ActivityResultLauncher
-10-23 12:44:04.396 D/HomeFragment( 8408): onStart
-10-23 12:44:04.404 I/HomeFragment( 8408): ActivityResultLauncher callback: resultCode=-1
-10-23 12:44:04.405 D/HomeFragment( 8408): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:44:04.412 D/HomeFragment( 8408): onResume
-10-23 12:44:05.167 I/HomeFragment( 8408): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:44:05.180 I/HomeFragment( 8408): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:44:07.754 I/HomeFragment( 8408): btn_import touch: action=0
-10-23 12:44:07.863 I/HomeFragment( 8408): btn_import touch: action=1
-10-23 12:44:07.865 I/HomeFragment( 8408): 导入按钮被点击
-10-23 12:44:07.880 I/HomeFragment( 8408): launching ActivityResultLauncher
-10-23 12:44:10.693 D/HomeFragment( 8408): onStart
-10-23 12:44:10.696 I/HomeFragment( 8408): ActivityResultLauncher callback: resultCode=-1
-10-23 12:44:10.697 D/HomeFragment( 8408): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:44:10.708 D/HomeFragment( 8408): onResume
-10-23 12:44:11.389 I/HomeFragment( 8408): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:44:11.411 I/HomeFragment( 8408): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:44:22.227 I/HomeFragment( 8408): root view touch: action=0
-10-23 12:44:32.113 I/HomeFragment( 8408): btn_import touch: action=0
-10-23 12:44:32.220 I/HomeFragment( 8408): btn_import touch: action=1
-10-23 12:44:32.241 I/HomeFragment( 8408): 导入按钮被点击
-10-23 12:44:32.254 I/HomeFragment( 8408): launching ActivityResultLauncher
-10-23 12:44:35.365 D/HomeFragment( 8408): onStart
-10-23 12:44:35.377 I/HomeFragment( 8408): ActivityResultLauncher callback: resultCode=-1
-10-23 12:44:35.378 D/HomeFragment( 8408): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:44:35.381 D/HomeFragment( 8408): onResume
-10-23 12:44:35.578 I/HomeFragment( 8408): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:44:35.594 I/HomeFragment( 8408): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:45:19.074 I/HomeFragment( 8408): onDestroy: parserExecutor shutdown
-10-23 12:45:25.991 I/MainActivity( 8408): switchFragment: target=HomeFragment
-10-23 12:45:26.115 I/HomeFragment( 8408): onCreate
-10-23 12:45:26.232 I/HomeFragment( 8408): onCreateView
-10-23 12:45:26.248 D/HomeFragment( 8408): onStart
-10-23 12:45:26.269 D/HomeFragment( 8408): onResume
-10-23 12:46:01.662 I/HomeFragment( 8408): btn_import touch: action=0
-10-23 12:46:01.776 I/HomeFragment( 8408): btn_import touch: action=1
-10-23 12:46:01.793 I/HomeFragment( 8408): 导入按钮被点击
-10-23 12:46:01.805 I/HomeFragment( 8408): launching ActivityResultLauncher
-10-23 12:46:08.432 D/HomeFragment( 8408): onStart
-10-23 12:46:08.433 I/HomeFragment( 8408): ActivityResultLauncher callback: resultCode=0
-10-23 12:46:08.433 D/HomeFragment( 8408): Activity result not OK: 0
-10-23 12:46:08.436 D/HomeFragment( 8408): onResume
-10-23 12:51:21.408 I/MainActivity( 8556): switchFragment: target=HomeFragment
-10-23 12:51:21.551 I/HomeFragment( 8556): onCreate
-10-23 12:51:21.850 I/HomeFragment( 8556): onCreateView
-10-23 12:51:21.858 D/HomeFragment( 8556): onStart
-10-23 12:51:21.885 D/HomeFragment( 8556): onResume
-10-23 12:51:24.231 I/HomeFragment( 8556): btn_import touch: action=0
-10-23 12:51:24.369 I/HomeFragment( 8556): btn_import touch: action=1
-10-23 12:51:24.395 I/HomeFragment( 8556): 导入按钮被点击
-10-23 12:51:24.404 I/HomeFragment( 8556): launching ActivityResultLauncher
-10-23 12:51:27.378 D/HomeFragment( 8556): onStart
-10-23 12:51:27.380 I/HomeFragment( 8556): ActivityResultLauncher callback: resultCode=-1
-10-23 12:51:27.380 D/HomeFragment( 8556): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:51:27.388 D/HomeFragment( 8556): onResume
-10-23 12:51:27.934 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:51:27.960 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注]
-10-23 12:51:32.986 I/HomeFragment( 8556): btn_import touch: action=0
-10-23 12:51:33.100 I/HomeFragment( 8556): btn_import touch: action=1
-10-23 12:51:33.119 I/HomeFragment( 8556): 导入按钮被点击
-10-23 12:51:33.191 I/HomeFragment( 8556): launching ActivityResultLauncher
-10-23 12:51:36.315 D/HomeFragment( 8556): onStart
-10-23 12:51:36.319 I/HomeFragment( 8556): ActivityResultLauncher callback: resultCode=-1
-10-23 12:51:36.319 D/HomeFragment( 8556): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E5%8C%97%E5%A4%A725%E5%B9%B4%E7%A7%8B%E9%83%A8%E5%88%86%E6%9C%AC%E7%A7%91%E8%AF%BE%E8%A1%A8(1).xlsx
-10-23 12:51:36.324 D/HomeFragment( 8556): onResume
-10-23 12:51:37.639 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet3.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.643 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet5.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.647 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet8.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.652 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet14.xml' header=[1536820, 生态学导论, 通识课(通选课IV), , 2, 王娓(副教授), 1, 城市与环境学院, , , 1~16周 每周周一10~11节 二教505, 50 / 50, 可申请, , 加入选课计划]
-10-23 12:51:37.652 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet12.xml' header=[]
-10-23 12:51:37.655 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet9.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.655 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet13.xml' header=[]
-10-23 12:51:37.659 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet4.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.664 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.668 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet7.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.671 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet11.xml' header=[课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表, ]
-10-23 12:51:37.674 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet6.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.677 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet10.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表]
-10-23 12:51:37.680 I/HomeFragment( 8556): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[1630740, 爱的心理学, 通识课(通选课II), , 2, 李同归(讲师), 1, 心理与认知科学学院, , , 1~16周 每周周一5~6节 二教107, 150 / 150, 可申请, 收旁听, 加入选课计划]
-10-23 12:51:37.807 I/ColumnMapDialog( 8556): onCreateDialog headers=[1536820, 生态学导论, 通识课(通选课IV), , 2, 王娓(副教授), 1, 城市与环境学院, , , 1~16周 每周周一10~11节 二教505, 50 / 50, 可申请, , 加入选课计划]
-10-23 12:51:41.695 I/ColumnMapDialog( 8556): onOk mapping idx title=0(1536820) time=0(1536820) teacher=0(1536820) unit=0(1536820) applyAll=false
-10-23 12:51:41.696 I/HomeFragment( 8556): Applying mapping for sheet='xl/worksheets/sheet14.xml' header=[1536820, 生态学导论, 通识课(通选课IV), , 2, 王娓(副教授), 1, 城市与环境学院, , , 1~16周 每周周一10~11节 二教505, 50 / 50, 可申请, , 加入选课计划] sampleRow=[1339180, 世界文化地理, 通识课(通识核心课IV), , 2, 邓辉(教授), 1, 城市与环境学院, , , 1~16周 每周周三10~11节 二教107, 210 / 210, 可申请, , 加入选课计划] mapping=(title=0,time=0,teacher=0,unit=0)
-10-23 12:51:41.809 I/ColumnMapDialog( 8556): onCreateDialog headers=[]
-10-23 12:51:43.989 I/ColumnMapDialog( 8556): onOk mapping idx title=-1(<null>) time=-1(<null>) teacher=-1(<null>) unit=-1(<null>) applyAll=true
-10-23 12:51:43.990 I/HomeFragment( 8556): Applying mapping for sheet='xl/worksheets/sheet12.xml' header=[] sampleRow=[6232000, 经济学原理, 通识课(通识核心课II), , 4, 张维迎(教授), 1, 国家发展研究院, , , 1~16周 每周周二10~12节 二教101, 400 / 400, 可申请, , 加入选课计划] mapping=(title=-1,time=-1,teacher=-1,unit=-1)
-10-23 12:52:14.821 I/MainActivity( 8676): switchFragment: target=HomeFragment
-10-23 12:52:14.927 I/HomeFragment( 8676): onCreate
-10-23 12:52:14.979 I/HomeFragment( 8676): onCreateView
-10-23 12:52:14.985 D/HomeFragment( 8676): onStart
-10-23 12:52:15.003 D/HomeFragment( 8676): onResume
-10-23 12:52:16.834 I/HomeFragment( 8676): btn_import touch: action=0
-10-23 12:52:16.958 I/HomeFragment( 8676): btn_import touch: action=1
-10-23 12:52:16.987 I/HomeFragment( 8676): 导入按钮被点击
-10-23 12:52:16.996 I/HomeFragment( 8676): launching ActivityResultLauncher
-10-23 12:52:20.421 D/HomeFragment( 8676): onStart
-10-23 12:52:20.439 I/HomeFragment( 8676): ActivityResultLauncher callback: resultCode=-1
-10-23 12:52:20.440 D/HomeFragment( 8676): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 12:52:20.446 D/HomeFragment( 8676): onResume
-10-23 12:52:21.712 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=0,time=7,teacher=4,unit=5)
-10-23 12:52:21.713 I/HomeFragment( 8676): autoMap XLSX sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课]
-10-23 12:52:21.720 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=0,time=7,teacher=4,unit=5)
-10-23 12:52:21.722 I/HomeFragment( 8676): autoMap XLSX sampleRow=[4715012, 材料科学数学基础, 必修, 3, 陶国华(副教授), 深圳研究生院, 2025, , 开课专业：材料物理与化学/材料与化工]
-10-23 12:52:36.168 I/HomeFragment( 8676): btn_import touch: action=0
-10-23 12:52:36.280 I/HomeFragment( 8676): btn_import touch: action=1
-10-23 12:52:36.283 I/HomeFragment( 8676): 导入按钮被点击
-10-23 12:52:36.295 I/HomeFragment( 8676): launching ActivityResultLauncher
-10-23 12:52:39.241 D/HomeFragment( 8676): onStart
-10-23 12:52:39.242 I/HomeFragment( 8676): ActivityResultLauncher callback: resultCode=-1
-10-23 12:52:39.243 D/HomeFragment( 8676): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E5%8C%97%E5%A4%A725%E5%B9%B4%E7%A7%8B%E9%83%A8%E5%88%86%E6%9C%AC%E7%A7%91%E8%AF%BE%E8%A1%A8(1).xlsx
-10-23 12:52:39.246 D/HomeFragment( 8676): onResume
-10-23 12:52:40.200 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet3.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.200 I/HomeFragment( 8676): autoMap XLSX sampleRow=[2330003, 哲学导论, 通识课(通识核心课I), , 3, 李猛(教授), 1, 哲学系, , 2025, 1~16周 每周周二5~6节 二教109, 130 / 130, 可申请, 请同时选修该任课老师讨论班, 加入选课计划]
-10-23 12:52:40.204 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet5.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.205 I/HomeFragment( 8676): autoMap XLSX sampleRow=[2133103, 基督教拉丁语(3), 全校任选, , 2, 李文丹(助理教授), 1, 历史学系, , , 1~16周 每周周一10~11节 文史107, 45807, 可申请, , 加入选课计划]
-10-23 12:52:40.208 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet8.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.209 I/HomeFragment( 8676): autoMap XLSX sampleRow=[4332210, 中国电影史, 通识课(通选课III), , 2, 李道新(教授), 1, 艺术学院, , 2023, 1~16周 每周周一7~8节 二教509, 80 / 80, 可申请, , 加入选课计划]
-10-23 12:52:40.213 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet14.xml' header=[1536820, 生态学导论, 通识课(通选课IV), , 2, 王娓(副教授), 1, 城市与环境学院, , , 1~16周 每周周一10~11节 二教505, 50 / 50, 可申请, , 加入选课计划] map=(title=-1,time=-1,teacher=-1,unit=7)
-10-23 12:52:40.213 I/HomeFragment( 8676): autoMap XLSX sampleRow=[1339180, 世界文化地理, 通识课(通识核心课IV), , 2, 邓辉(教授), 1, 城市与环境学院, , , 1~16周 每周周三10~11节 二教107, 210 / 210, 可申请, , 加入选课计划]
-10-23 12:52:40.214 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet12.xml' header=[] map=(title=-1,time=-1,teacher=-1,unit=-1)
-10-23 12:52:40.214 I/HomeFragment( 8676): autoMap XLSX sampleRow=[6232000, 经济学原理, 通识课(通识核心课II), , 4, 张维迎(教授), 1, 国家发展研究院, , , 1~16周 每周周二10~12节 二教101, 400 / 400, 可申请, , 加入选课计划]
-10-23 12:52:40.214 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet9.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.214 I/HomeFragment( 8676): autoMap XLSX sampleRow=[3232880, 中国社会研究（政治学）, 全校任选, , 3, 焦长权(助理教授), 1, 元培学院, , , 1~16周 每周周四10~11节 二教527, 100 / 100, 可申请, , 加入选课计划]
-10-23 12:52:40.215 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet13.xml' header=[] map=(title=-1,time=-1,teacher=-1,unit=-1)
-10-23 12:52:40.215 I/HomeFragment( 8676): autoMap XLSX sampleRow=[432270, 大气概论, 通选课, , 2, 李万彪(副教授), 1, 物理学院, , 无, 1~16周 每周周一5~6节 三教103, 100 / 100, 可申请, 第16周随堂期末笔试, 加入选课计划]
-10-23 12:52:40.215 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet4.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.215 I/HomeFragment( 8676): autoMap XLSX sampleRow=[3138020, 社会科学经典研读（社会学）, 全校任选, , 1, 田耕(长聘副教授), 1, 社会学系, , , 1~8周 每周周二7~8节 文史203, 20 / 15, 可申请, 仅限“严复班”学生选课。, 加入选课计划]
-10-23 12:52:40.218 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.218 I/HomeFragment( 8676): autoMap XLSX sampleRow=[2036020, 中文应用与实践, 任选、劳动教育课, , 2, 宋亚云(长聘副教授), 1, 中国语言文学系, 中国语言文学类, 2024, , 60 / 18, 不可申请, --补录,劳动教育课, 加入选课计划]
-10-23 12:52:40.222 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet7.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.222 I/HomeFragment( 8676): autoMap XLSX sampleRow=[2432470, 全球健康治理概论, 全校任选, , 3, 张海滨(教授),吕蓓妮(助理教授), 1, 国际关系学院, , , 1~16周 每周周三7~9节 一教202, 60 / 22, 可申请, 最后一节课随堂考试, 加入选课计划]
-10-23 12:52:40.225 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet11.xml' header=[课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表, ] map=(title=0,time=9,teacher=4,unit=6)
-10-23 12:52:40.225 I/HomeFragment( 8676): autoMap XLSX sampleRow=[2240290, 田野考古实习, 任选、劳动教育课, , 12, 张弛(教授),邓振华(长聘副教授),张海(长聘副教授),秦岭(副教授)等, 1, 考古文博学院, 考古学, 2023, , 50 / 37, 可申请, , 加入选课计划]
-10-23 12:52:40.227 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet6.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.227 I/HomeFragment( 8676): autoMap XLSX sampleRow=[2930235, 比较法律前沿, 任选, , 1, 戴昕(长聘副教授), 1, 法学院, 法学, , , 50 / 39, 不可申请, 关注公众号“PKULAWGLOBALPROGRAM”, 加入选课计划]
-10-23 12:52:40.230 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet10.xml' header=[课程号, 课程名, 课程类别, , 学分, 教师, 班号, 开课单位, 专业, 年级, 上课时间及教室, 限数/已选, 自选P/NP, 备注, 加入可选列表] map=(title=0,time=10,teacher=5,unit=7)
-10-23 12:52:40.231 I/HomeFragment( 8676): autoMap XLSX sampleRow=[1834351, 短视频创作, 全校任选, , 2, 张慧瑜(长聘副教授),陈波(副研究员),祖枫(编辑),齐思贤(研究实习员)等, 1, 新闻与传播学院, , , 1~16周 每周周二7~8节 二教416, 60 / 60, 可申请, , 加入选课计划]
-10-23 12:52:40.232 I/HomeFragment( 8676): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[1630740, 爱的心理学, 通识课(通选课II), , 2, 李同归(讲师), 1, 心理与认知科学学院, , , 1~16周 每周周一5~6节 二教107, 150 / 150, 可申请, 收旁听, 加入选课计划] map=(title=-1,time=-1,teacher=5,unit=7)
-10-23 12:52:40.232 I/HomeFragment( 8676): autoMap XLSX sampleRow=[1630034, 实验心理学, 通识课(通识核心课IV), , 4, 吴艳红(教授),耿海燕(教授),张俊云(副教授), 1, 心理与认知科学学院, , 2024, 1~16周 每周周二3~4节 理教211, 120 / 78, 可申请, 先修普心/心导、心统1, 加入选课计划]
-10-23 12:52:40.319 I/ColumnMapDialog( 8676): onCreateDialog headers=[1536820, 生态学导论, 通识课(通选课IV), , 2, 王娓(副教授), 1, 城市与环境学院, , , 1~16周 每周周一10~11节 二教505, 50 / 50, 可申请, , 加入选课计划]
-10-23 12:52:42.705 I/ColumnMapDialog( 8676): onOk mapping idx title=0(1536820) time=0(1536820) teacher=0(1536820) unit=0(1536820) applyAll=false
-10-23 12:52:42.706 I/HomeFragment( 8676): Applying mapping for sheet='xl/worksheets/sheet14.xml' header=[1536820, 生态学导论, 通识课(通选课IV), , 2, 王娓(副教授), 1, 城市与环境学院, , , 1~16周 每周周一10~11节 二教505, 50 / 50, 可申请, , 加入选课计划] sampleRow=[1339180, 世界文化地理, 通识课(通识核心课IV), , 2, 邓辉(教授), 1, 城市与环境学院, , , 1~16周 每周周三10~11节 二教107, 210 / 210, 可申请, , 加入选课计划] mapping=(title=0,time=0,teacher=0,unit=0)
-10-23 12:52:42.823 I/ColumnMapDialog( 8676): onCreateDialog headers=[]
-10-23 12:52:45.561 I/ColumnMapDialog( 8676): onOk mapping idx title=-1(<null>) time=-1(<null>) teacher=-1(<null>) unit=-1(<null>) applyAll=true
-10-23 12:52:45.562 I/HomeFragment( 8676): Applying mapping for sheet='xl/worksheets/sheet12.xml' header=[] sampleRow=[6232000, 经济学原理, 通识课(通识核心课II), , 4, 张维迎(教授), 1, 国家发展研究院, , , 1~16周 每周周二10~12节 二教101, 400 / 400, 可申请, , 加入选课计划] mapping=(title=-1,time=-1,teacher=-1,unit=-1)
-10-23 20:25:12.696 I/MainActivity(13949): switchFragment: target=HomeFragment
-10-23 20:25:12.939 I/HomeFragment(13949): onCreate
-10-23 20:25:12.991 I/HomeFragment(13949): onCreateView
-10-23 20:25:12.998 D/HomeFragment(13949): onStart
-10-23 20:25:13.024 D/HomeFragment(13949): onResume
-10-23 20:25:16.599 I/HomeFragment(13949): btn_import touch: action=0
-10-23 20:25:16.695 I/HomeFragment(13949): btn_import touch: action=1
-10-23 20:25:16.724 I/HomeFragment(13949): 导入按钮被点击
-10-23 20:25:16.786 I/HomeFragment(13949): launching ActivityResultLauncher
-10-23 20:25:53.211 D/HomeFragment(13949): onStart
-10-23 20:25:53.213 I/HomeFragment(13949): ActivityResultLauncher callback: resultCode=-1
-10-23 20:25:53.214 D/HomeFragment(13949): received URI via ActivityResultLauncher: content://com.android.externalstorage.documents/document/primary%3A%E8%AF%BE%E8%A1%A8_%E7%B2%BE%E7%AE%80%E7%89%88.xlsx
-10-23 20:25:53.223 D/HomeFragment(13949): onResume
-10-23 20:25:53.810 I/HomeFragment(13949): autoMap XLSX sheet='xl/worksheets/sheet2.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=0,time=7,teacher=4,unit=5)
-10-23 20:25:53.812 I/HomeFragment(13949): autoMap XLSX sampleRow=[1800030, 传播学研究方法, 必修, 3, 王洪喆(长聘副教授), 新闻与传播学院, 2025, 1~16周 每周周一10~12节 理教305, 2024、2025级博士生选课]
-10-23 20:25:53.825 I/HomeFragment(13949): autoMap XLSX sheet='xl/worksheets/sheet1.xml' header=[课程号, 课程名, 课程类别, 学分, 教师, 开课单位, 年级, 上课时间及教室, 备注] map=(title=0,time=7,teacher=4,unit=5)
-10-23 20:25:53.826 I/HomeFragment(13949): autoMap XLSX sampleRow=[4715012, 材料科学数学基础, 必修, 3, 陶国华(副教授), 深圳研究生院, 2025, , 开课专业：材料物理与化学/材料与化工]
+10-24 23:31:23.648 E/HomeFragment( 5814): handleUri: start uri=content://com.android.externalstorage.documents/document/primary%3A%E5%8C%97%E5%A4%A725%E5%B9%B4%E7%A7%8B%E9%83%A8%E5%88%86%E6%9C%AC%E7%A7%91%E8%AF%BE%E8%A1%A8(1).xlsx
+10-24 23:31:24.630 E/HomeFragment( 5814): XLSX parsed sheets=14 names=[哲学系,历史学系,艺术学院,Sheet14,Sheet12,元培学院,Sheet13,社会学系,中文系,国关学院,建筑景观园林,法学院,新传,心理学]
+10-24 23:31:24.637 E/HomeFragment( 5814): processNextPending: handling sheet='哲学系' rows=126
+10-24 23:31:28.008 E/HomeFragment( 5814): onMapping: sheet='哲学系' mapping=[title=1,time=10,teacher=5,unit=7,applyToAll=true]
+10-24 23:31:28.021 E/HomeFragment( 5814): Course.fromRows: sheet='哲学系' produced=125
+10-24 23:31:28.053 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=125
+10-24 23:31:28.117 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.119 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=82
+10-24 23:31:28.147 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.149 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=75
+10-24 23:31:28.197 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.201 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=4
+10-24 23:31:28.207 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.208 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=50
+10-24 23:31:28.234 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.235 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=1
+10-24 23:31:28.237 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.239 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=7
+10-24 23:31:28.246 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.248 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=56
+10-24 23:31:28.265 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.265 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=108
+10-24 23:31:28.292 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.294 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=74
+10-24 23:31:28.308 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.308 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=34
+10-24 23:31:28.315 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.315 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=72
+10-24 23:31:28.331 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.333 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=37
+10-24 23:31:28.341 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:31:28.342 E/HomeFragment( 5814): mergeParsedCourses called parsedSize=61
+10-24 23:31:28.352 E/HomeFragment( 5814): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:33.679 E/HomeFragment( 5937): handleUri: start uri=content://com.android.externalstorage.documents/document/primary%3A%E5%8C%97%E5%A4%A725%E5%B9%B4%E7%A7%8B%E9%83%A8%E5%88%86%E6%9C%AC%E7%A7%91%E8%AF%BE%E8%A1%A8(1).xlsx
+10-24 23:43:34.603 E/HomeFragment( 5937): XLSX parsed sheets=14 names=[哲学系,历史学系,艺术学院,Sheet14,Sheet12,元培学院,Sheet13,社会学系,中文系,国关学院,建筑景观园林,法学院,新传,心理学]
+10-24 23:43:34.614 E/HomeFragment( 5937): processNextPending: handling sheet='哲学系' rows=126
+10-24 23:43:37.146 E/HomeFragment( 5937): onMapping: sheet='哲学系' mapping=[title=1,time=10,teacher=5,unit=7,applyToAll=true]
+10-24 23:43:37.154 E/HomeFragment( 5937): Course.fromRows: sheet='哲学系' produced=125
+10-24 23:43:37.178 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=125
+10-24 23:43:37.211 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.213 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=82
+10-24 23:43:37.224 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.226 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=75
+10-24 23:43:37.241 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.241 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=4
+10-24 23:43:37.242 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.243 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=50
+10-24 23:43:37.253 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.253 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=1
+10-24 23:43:37.256 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.256 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=7
+10-24 23:43:37.258 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.258 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=56
+10-24 23:43:37.272 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.272 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=108
+10-24 23:43:37.293 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.294 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=74
+10-24 23:43:37.308 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.309 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=34
+10-24 23:43:37.320 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.321 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=72
+10-24 23:43:37.338 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.340 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=37
+10-24 23:43:37.355 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:43:37.357 E/HomeFragment( 5937): mergeParsedCourses called parsedSize=61
+10-24 23:43:37.388 E/HomeFragment( 5937): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:44.360 E/HomeFragment( 6046): handleUri: start uri=content://com.android.externalstorage.documents/document/primary%3A%E5%8C%97%E5%A4%A725%E5%B9%B4%E7%A7%8B%E9%83%A8%E5%88%86%E6%9C%AC%E7%A7%91%E8%AF%BE%E8%A1%A8(1).xlsx
+10-24 23:49:45.387 E/HomeFragment( 6046): XLSX parsed sheets=14 names=[哲学系,历史学系,艺术学院,Sheet14,Sheet12,元培学院,Sheet13,社会学系,中文系,国关学院,建筑景观园林,法学院,新传,心理学]
+10-24 23:49:45.396 E/HomeFragment( 6046): processNextPending: handling sheet='哲学系' rows=126
+10-24 23:49:48.352 E/HomeFragment( 6046): onMapping: sheet='哲学系' mapping=[title=1,time=10,teacher=5,unit=7,applyToAll=true]
+10-24 23:49:48.358 E/HomeFragment( 6046): Course.fromRows: sheet='哲学系' produced=125
+10-24 23:49:48.383 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=125
+10-24 23:49:48.465 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.466 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=82
+10-24 23:49:48.562 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.564 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=75
+10-24 23:49:48.654 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.655 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=4
+10-24 23:49:48.705 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.705 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=50
+10-24 23:49:48.743 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.743 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=1
+10-24 23:49:48.774 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.775 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=7
+10-24 23:49:48.803 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.804 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=56
+10-24 23:49:48.860 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.861 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=108
+10-24 23:49:48.905 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.905 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=74
+10-24 23:49:48.946 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.946 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=34
+10-24 23:49:48.997 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:48.998 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=72
+10-24 23:49:49.053 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:49.064 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=37
+10-24 23:49:49.111 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:49:49.111 E/HomeFragment( 6046): mergeParsedCourses called parsedSize=61
+10-24 23:49:49.147 E/HomeFragment( 6046): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:37.241 E/CourseAdapter( 6160): bind file='primary:北大25年秋部分本科课表(1).xlsx' computedSheetCount=14 names=[社会学系, 哲学系, 艺术学院, 建筑景观园林, 中文系, 元培学院, 法学院, 心理学, 国关学院, Sheet12, 新传, Sheet13, Sheet14, 历史学系]
+10-24 23:55:47.785 E/HomeFragment( 6160): handleUri: start uri=content://com.android.externalstorage.documents/document/primary%3A%E5%8C%97%E5%A4%A725%E5%B9%B4%E7%A7%8B%E9%83%A8%E5%88%86%E6%9C%AC%E7%A7%91%E8%AF%BE%E8%A1%A8(1).xlsx
+10-24 23:55:48.788 E/HomeFragment( 6160): XLSX parsed sheets=14 names=[哲学系,历史学系,艺术学院,Sheet14,Sheet12,元培学院,Sheet13,社会学系,中文系,国关学院,建筑景观园林,法学院,新传,心理学]
+10-24 23:55:48.796 E/HomeFragment( 6160): processNextPending: handling sheet='哲学系' rows=126
+10-24 23:55:51.865 E/HomeFragment( 6160): onMapping: sheet='哲学系' mapping=[title=1,time=10,teacher=5,unit=7,applyToAll=true]
+10-24 23:55:51.877 E/HomeFragment( 6160): Course.fromRows: sheet='哲学系' produced=125
+10-24 23:55:51.898 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=125
+10-24 23:55:51.939 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:51.940 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=82
+10-24 23:55:52.001 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.002 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=75
+10-24 23:55:52.115 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.120 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=4
+10-24 23:55:52.182 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.182 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=50
+10-24 23:55:52.236 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.237 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=1
+10-24 23:55:52.273 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.274 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=7
+10-24 23:55:52.306 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.307 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=56
+10-24 23:55:52.344 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.344 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=108
+10-24 23:55:52.395 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.395 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=74
+10-24 23:55:52.442 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.444 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=34
+10-24 23:55:52.541 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.541 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=72
+10-24 23:55:52.628 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.629 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=37
+10-24 23:55:52.682 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.682 E/HomeFragment( 6160): mergeParsedCourses called parsedSize=61
+10-24 23:55:52.729 E/HomeFragment( 6160): mergeParsedCourses: merged parsed files=[primary:北大25年秋部分本科课表(1).xlsx]
+10-24 23:55:52.734 E/CourseAdapter( 6160): bind file='primary:北大25年秋部分本科课表(1).xlsx' computedSheetCount=14 names=[社会学系, 哲学系, 艺术学院, 建筑景观园林, 中文系, 元培学院, 法学院, 心理学, 国关学院, Sheet12, 新传, Sheet13, Sheet14, 历史学系]

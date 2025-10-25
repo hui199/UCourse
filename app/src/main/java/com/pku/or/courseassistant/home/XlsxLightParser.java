@@ -85,9 +85,11 @@ public class XlsxLightParser {
         // parse each sheet xml stored
         ParseResult res = new ParseResult();
 
-        // build mapping from sheet path -> display name using workbook.xml and workbook.xml.rels
-        Map<String, String> relIdToTarget = new HashMap<>();
-        Map<String, String> pathToDisplayName = new HashMap<>();
+    // build mapping from sheet path -> display name using workbook.xml and workbook.xml.rels
+    Map<String, String> relIdToTarget = new HashMap<>();
+    Map<String, String> pathToDisplayName = new HashMap<>();
+    // keep sheet order as declared in workbook.xml when possible
+    java.util.List<String> orderedSheetPaths = new ArrayList<>();
         try {
             if (workbookRels != null) {
                 XmlPullParserFactory f = XmlPullParserFactory.newInstance();
@@ -132,9 +134,11 @@ public class XlsxLightParser {
                             }
                             if (rid != null) {
                                 String target = relIdToTarget.get(rid);
-                                    if (target != null && nameAttr != null) {
+                                if (target != null && nameAttr != null) {
                                     // map the sheet xml path (e.g. xl/worksheets/sheet1.xml) to the display name
                                     pathToDisplayName.put(target, nameAttr);
+                                    // record the sheet path in workbook-declared order
+                                    orderedSheetPaths.add(target);
                                 }
                             }
                         }
@@ -145,54 +149,156 @@ public class XlsxLightParser {
         } catch (Exception ex) {
             // non-fatal: if mapping fails we'll fallback to path-based names
         }
-        for (Map.Entry<String, byte[]> en : sheetsXml.entrySet()) {
-            byte[] data = en.getValue();
-            XmlPullParserFactory f = XmlPullParserFactory.newInstance();
-            XmlPullParser xp = f.newPullParser();
-            xp.setInput(new InputStreamReader(new java.io.ByteArrayInputStream(data), "UTF-8"));
-            Sheet s = new Sheet();
-            // prefer workbook-provided display name if available
-            String key = en.getKey(); // e.g. xl/worksheets/sheet1.xml
-            String display = pathToDisplayName.get(key);
-            if (display != null) s.name = display; else s.name = key;
-            try { } catch (Throwable _t) {}
-            List<String> row = new ArrayList<>();
-            int eventType = xp.getEventType();
-            String curCellType = null;
-            String curCellRef = null;
-            String curText = null;
-            while (eventType != XmlPullParser.END_DOCUMENT) {
-                if (eventType == XmlPullParser.START_TAG) {
-                    String n = xp.getName();
-                    if (n.equals("c")) {
-                        curCellType = xp.getAttributeValue(null, "t");
-                        curCellRef = xp.getAttributeValue(null, "r");
-                        curText = null;
-                    } else if (n.equals("v") || n.equals("t")) {
-                        xp.next();
-                        if (xp.getEventType() == XmlPullParser.TEXT) {
-                            curText = xp.getText();
+        // If we have workbook-declared order, iterate sheets in that order first
+        java.util.Set<String> handled = new java.util.HashSet<>();
+        if (!orderedSheetPaths.isEmpty()) {
+            for (String key : orderedSheetPaths) {
+                byte[] data = sheetsXml.get(key);
+                if (data == null) continue;
+                handled.add(key);
+                XmlPullParserFactory f = XmlPullParserFactory.newInstance();
+                XmlPullParser xp = f.newPullParser();
+                xp.setInput(new InputStreamReader(new java.io.ByteArrayInputStream(data), "UTF-8"));
+                Sheet s = new Sheet();
+                String display = pathToDisplayName.get(key);
+                if (display != null) s.name = display; else s.name = key;
+                List<String> row = new ArrayList<>();
+                int eventType = xp.getEventType();
+                String curCellType = null;
+                String curCellRef = null;
+                String curText = null;
+                while (eventType != XmlPullParser.END_DOCUMENT) {
+                    if (eventType == XmlPullParser.START_TAG) {
+                        String n = xp.getName();
+                        if (n.equals("c")) {
+                            curCellType = xp.getAttributeValue(null, "t");
+                            curCellRef = xp.getAttributeValue(null, "r");
+                            curText = null;
+                        } else if (n.equals("v") || n.equals("t")) {
+                            xp.next();
+                            if (xp.getEventType() == XmlPullParser.TEXT) {
+                                curText = xp.getText();
+                            }
+                        }
+                    } else if (eventType == XmlPullParser.END_TAG) {
+                        String n = xp.getName();
+                        if (n.equals("c")) {
+                            String val = curText;
+                            if (curCellType != null && curCellType.equals("s")) {
+                                try {
+                                    int idx = Integer.parseInt(val);
+                                    val = shared.get(idx);
+                                } catch (Exception ex) {}
+                            }
+                            row.add(val != null ? val : "");
+                        } else if (n.equals("row")) {
+                            s.rows.add(row.toArray(new String[0]));
+                            row = new ArrayList<>();
                         }
                     }
-                } else if (eventType == XmlPullParser.END_TAG) {
-                    String n = xp.getName();
-                    if (n.equals("c")) {
-                        String val = curText;
-                        if (curCellType != null && curCellType.equals("s")) {
-                            try {
-                                int idx = Integer.parseInt(val);
-                                val = shared.get(idx);
-                            } catch (Exception ex) {}
-                        }
-                        row.add(val != null ? val : "");
-                    } else if (n.equals("row")) {
-                        s.rows.add(row.toArray(new String[0]));
-                        row = new ArrayList<>();
-                    }
+                    eventType = xp.next();
                 }
-                eventType = xp.next();
+                res.sheets.add(s);
             }
-            res.sheets.add(s);
+            // process any remaining sheet xml entries not present in workbook order
+            for (Map.Entry<String, byte[]> en : sheetsXml.entrySet()) {
+                String key = en.getKey();
+                if (handled.contains(key)) continue;
+                byte[] data = en.getValue();
+                XmlPullParserFactory f = XmlPullParserFactory.newInstance();
+                XmlPullParser xp = f.newPullParser();
+                xp.setInput(new InputStreamReader(new java.io.ByteArrayInputStream(data), "UTF-8"));
+                Sheet s = new Sheet();
+                String display = pathToDisplayName.get(key);
+                if (display != null) s.name = display; else s.name = key;
+                List<String> row = new ArrayList<>();
+                int eventType = xp.getEventType();
+                String curCellType = null;
+                String curCellRef = null;
+                String curText = null;
+                while (eventType != XmlPullParser.END_DOCUMENT) {
+                    if (eventType == XmlPullParser.START_TAG) {
+                        String n = xp.getName();
+                        if (n.equals("c")) {
+                            curCellType = xp.getAttributeValue(null, "t");
+                            curCellRef = xp.getAttributeValue(null, "r");
+                            curText = null;
+                        } else if (n.equals("v") || n.equals("t")) {
+                            xp.next();
+                            if (xp.getEventType() == XmlPullParser.TEXT) {
+                                curText = xp.getText();
+                            }
+                        }
+                    } else if (eventType == XmlPullParser.END_TAG) {
+                        String n = xp.getName();
+                        if (n.equals("c")) {
+                            String val = curText;
+                            if (curCellType != null && curCellType.equals("s")) {
+                                try {
+                                    int idx = Integer.parseInt(val);
+                                    val = shared.get(idx);
+                                } catch (Exception ex) {}
+                            }
+                            row.add(val != null ? val : "");
+                        } else if (n.equals("row")) {
+                            s.rows.add(row.toArray(new String[0]));
+                            row = new ArrayList<>();
+                        }
+                    }
+                    eventType = xp.next();
+                }
+                res.sheets.add(s);
+            }
+        } else {
+            for (Map.Entry<String, byte[]> en : sheetsXml.entrySet()) {
+                byte[] data = en.getValue();
+                XmlPullParserFactory f = XmlPullParserFactory.newInstance();
+                XmlPullParser xp = f.newPullParser();
+                xp.setInput(new InputStreamReader(new java.io.ByteArrayInputStream(data), "UTF-8"));
+                Sheet s = new Sheet();
+                // prefer workbook-provided display name if available
+                String key = en.getKey(); // e.g. xl/worksheets/sheet1.xml
+                String display = pathToDisplayName.get(key);
+                if (display != null) s.name = display; else s.name = key;
+                try { } catch (Throwable _t) {}
+                List<String> row = new ArrayList<>();
+                int eventType = xp.getEventType();
+                String curCellType = null;
+                String curCellRef = null;
+                String curText = null;
+                while (eventType != XmlPullParser.END_DOCUMENT) {
+                    if (eventType == XmlPullParser.START_TAG) {
+                        String n = xp.getName();
+                        if (n.equals("c")) {
+                            curCellType = xp.getAttributeValue(null, "t");
+                            curCellRef = xp.getAttributeValue(null, "r");
+                            curText = null;
+                        } else if (n.equals("v") || n.equals("t")) {
+                            xp.next();
+                            if (xp.getEventType() == XmlPullParser.TEXT) {
+                                curText = xp.getText();
+                            }
+                        }
+                    } else if (eventType == XmlPullParser.END_TAG) {
+                        String n = xp.getName();
+                        if (n.equals("c")) {
+                            String val = curText;
+                            if (curCellType != null && curCellType.equals("s")) {
+                                try {
+                                    int idx = Integer.parseInt(val);
+                                    val = shared.get(idx);
+                                } catch (Exception ex) {}
+                            }
+                            row.add(val != null ? val : "");
+                        } else if (n.equals("row")) {
+                            s.rows.add(row.toArray(new String[0]));
+                            row = new ArrayList<>();
+                        }
+                    }
+                    eventType = xp.next();
+                }
+                res.sheets.add(s);
+            }
         }
 
         return res;

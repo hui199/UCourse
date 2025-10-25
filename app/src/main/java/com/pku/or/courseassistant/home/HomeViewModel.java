@@ -34,6 +34,13 @@ public class HomeViewModel extends AndroidViewModel {
     public void save(List<Course> list) {
         String json = gson.toJson(list);
         getApplication().getSharedPreferences("app_prefs", 0).edit().putString(PREF_KEY, json).apply();
-        courses.postValue(list);
+        // If we're on the main thread, update LiveData synchronously to ensure callers that
+        // read courses.getValue() immediately after save see the newest value. Otherwise
+        // postValue is used to schedule the update on the main thread.
+        if (android.os.Looper.getMainLooper().isCurrentThread()) {
+            courses.setValue(list);
+        } else {
+            courses.postValue(list);
+        }
     }
 }
