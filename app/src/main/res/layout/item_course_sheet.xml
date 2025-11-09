@@ -15,8 +15,7 @@
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
         android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:elevation="2dp">
+        android:paddingBottom="8dp">
 
         <View
             android:id="@+id/v_accent"

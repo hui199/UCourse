@@ -30,20 +30,31 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 
+/**
+ * 课程列表适配器
+ * 管理课程的三级展示结构：文件 -> Sheet -> 课程
+ * 支持展开/折叠、长按操作、滑动评分视觉反馈
+ */
 public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-    private static final int TYPE_FILE = 0;
-    private static final int TYPE_SHEET = 1;
-    private static final int TYPE_COURSE = 2;
+    // 项目类型常量
+    private static final int TYPE_FILE = 0;   // 文件类型
+    private static final int TYPE_SHEET = 1;  // Sheet类型
+    private static final int TYPE_COURSE = 2; // 课程类型
 
+    // 扁平化的显示列表（包含所有可见的文件/Sheet/课程）
     private final List<Item> display = new ArrayList<>();
-    // keep raw list to be able to rebuild display on expand/collapse
+    // 原始课程列表（保留完整数据，用于重建display）
     private List<Course> rawCourses = new ArrayList<>();
-    // store expansion state across updates
+    // 展开状态存储（跨数据更新保留状态）
     private final Set<String> expandedFiles = new HashSet<>();
     private final Set<String> expandedSheets = new HashSet<>();
-    // cached sheet count per file computed when rebuilding display
+    // 缓存每个文件的Sheet数量（重建display时计算）
     private final Map<String, Integer> sheetCountByFile = new java.util.HashMap<>();
-    // long-press listener
+    
+    /**
+     * 长按监听器接口
+     * 用于响应用户长按文件/Sheet/课程的操作
+     */
     public interface OnItemLongPressListener {
         void onItemLongPress(int type, String id, int position);
     }
@@ -57,26 +68,43 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         setCourses(items);
     }
 
-    // Item wrapper for flat display list
+    /**
+     * 显示项包装类
+     * 将文件/Sheet/课程统一为Item，便于RecyclerView扁平化显示
+     */
     private static class Item {
-        int type;
-        String id; // for file: fileId, for sheet: fileId|sheetName, for course: course.id
-        String title;
-        Course course;
-        String parentId; // fileId for sheet, fileId|sheetName for course
+        int type;        // 项目类型：TYPE_FILE、TYPE_SHEET、TYPE_COURSE
+        String id;       // 项目ID：文件=fileId, Sheet=fileId|sheetName, 课程=course.id
+        String title;    // 显示标题
+        Course course;   // 课程对象（仅课程类型时有值）
+        String parentId; // 父ID：Sheet的父=fileId, 课程的父=fileId|sheetName
     }
 
-    // Public API: provide raw course list; adapter will group by fileId -> sheetName
+    /**
+     * 设置课程列表（公共API）
+     * 根据fileId和sheetName自动分组，构建三级结构
+     * 
+     * @param courses 原始课程列表
+     */
     public void setCourses(List<Course> courses) {
         rawCourses = courses == null ? new ArrayList<>() : new ArrayList<>(courses);
-        // rebuild display and apply diff to animate moves instead of full refresh
+        // 重建显示列表并应用DiffUtil计算差异（启用动画效果）
         List<Item> newDisplay = buildDisplayFromRaw();
         applyDisplayDiff(newDisplay);
     }
-    // Build a new display list from rawCourses without mutating the current display
+    
+    /**
+     * 从原始课程列表构建扁平化的显示列表
+     * 按文件->Sheet->课程的层级结构组织数据
+     * 根据展开状态决定是否显示子项
+     * 
+     * @return 扁平化的Item列表，用于RecyclerView显示
+     */
     private List<Item> buildDisplayFromRaw() {
         List<Item> out = new ArrayList<>();
         if (rawCourses == null || rawCourses.isEmpty()) return out;
+        
+        // 第一步：按文件和Sheet分组
         Map<String, Map<String, List<Course>>> byFile = new LinkedHashMap<>();
         for (Course c : rawCourses) {
             String f = c.fileId == null ? "<nofile>" : c.fileId;
@@ -86,27 +114,34 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             fm.putIfAbsent(s, new ArrayList<>());
             fm.get(s).add(c);
         }
+        
+        // 第二步：构建扁平化显示列表
         for (Map.Entry<String, Map<String, List<Course>>> fe : byFile.entrySet()) {
             String fileId = fe.getKey();
-            // record sheet count for this file for badge display
+            // 记录该文件的Sheet数量（用于徽章显示）
             try { sheetCountByFile.put(fileId, fe.getValue() == null ? 0 : fe.getValue().size()); } catch (Throwable _t) { sheetCountByFile.put(fileId, 0); }
+            
+            // 添加文件项
             Item fileItem = new Item();
             fileItem.type = TYPE_FILE;
             fileItem.id = fileId;
             fileItem.title = fileId;
             out.add(fileItem);
+            
             Map<String, List<Course>> sheets = fe.getValue();
+            // 只有当文件展开时才显示Sheet
             if (expandedFiles.contains(fileId)) {
-                // building display for file
+                // 添加Sheet项
                 for (Map.Entry<String, List<Course>> se : sheets.entrySet()) {
                     String sheetName = se.getKey();
                     Item sheetItem = new Item();
                     sheetItem.type = TYPE_SHEET;
                     sheetItem.id = fileId + "|" + sheetName;
                     sheetItem.title = sheetName;
-                    try { } catch (Throwable _t) {}
                     sheetItem.parentId = fileId;
                     out.add(sheetItem);
+                    
+                    // 只有当Sheet展开时才显示课程
                     if (expandedSheets.contains(sheetItem.id)) {
                         for (Course c : se.getValue()) {
                             Item ci = new Item();
@@ -124,6 +159,10 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         return out;
     }
 
+    /**
+     * 创建ViewHolder
+     * 根据viewType加载不同的布局（文件、Sheet、课程）
+     */
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -139,50 +178,65 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         return new VH(v);
     }
 
+    /**
+     * 绑定数据到ViewHolder
+     * 根据项目类型（文件/Sheet/课程）显示不同内容：
+     * - 文件：显示文件名、Sheet数量、展开箭头、渐变色条
+     * - Sheet：显示Sheet名称、课程数量、展开箭头、浅色背景
+     * - 课程：显示课程详细信息、评分进度条、滑动视觉反馈
+     */
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         Item it = display.get(position);
         VH vh = (VH) holder;
         final int pos = position;
+        
         if (it.type == TYPE_FILE) {
-            // show a shortened file name (base name) and a summary meta with sheet count
+            // === 文件类型绑定 ===
+            // 提取文件名（去除路径）
             String full = it.title == null ? "(file)" : it.title;
             String base = full;
             int idx = full.lastIndexOf('/');
             if (idx >= 0 && idx < full.length()-1) base = full.substring(idx+1);
-            // use cached sheet count computed during display rebuild
+            
+            // 使用缓存的Sheet数量（在构建display时计算）
             int sheetCount = 0;
             try { sheetCount = sheetCountByFile.getOrDefault(it.id == null ? "<nofile>" : it.id, 0); } catch (Throwable _t) { sheetCount = 0; }
             String titleWithCount = base + " (" + sheetCount + ")";
-            // truncate long titles: if > 40 chars show first half
+            
+            // 截断过长的标题（>40字符时显示前半部分）
             String disp = maybeTruncate(titleWithCount);
             vh.tvTitle.setText(disp);
             vh.tvTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
             vh.tvTitle.setTypeface(Typeface.DEFAULT_BOLD);
             vh.tvTitle.setTextColor(ContextCompat.getColor(vh.itemView.getContext(), R.color.black));
-            // bind count TextView (show as [N]) and hide legacy meta
+            
+            // 绑定数量标签（显示为[N]）
             try {
                 android.widget.TextView tvCount = vh.itemView.findViewById(R.id.tv_count);
                 if (tvCount != null) {
                     tvCount.setText("[" + sheetCount + "]");
-                    // tint count slightly using accent end color
+                    // 使用强调色渲染数量标签
                     int accent = generateAccentEndForKey(it.id == null ? "<nofile>" : it.id);
                     tvCount.setTextColor(accent);
                 }
             } catch (Throwable _t) {}
             vh.tvMeta.setText("");
-            // ensure title is single-line
+            
+            // 确保标题单行显示，超出部分省略
             vh.tvTitle.setSingleLine(true);
             vh.tvTitle.setEllipsize(TextUtils.TruncateAt.END);
-            // rotate arrow according to file expanded state
+            
+            // 根据展开状态旋转箭头（展开90度，折叠0度）
             if (vh.arrow != null) {
                 vh.arrow.setRotation(expandedFiles.contains(it.id) ? 90f : 0f);
-                // tint arrow to match meta color
+                // 设置箭头颜色
                 try {
                     if (vh.arrow instanceof ImageView) ((ImageView)vh.arrow).setColorFilter(ContextCompat.getColor(vh.itemView.getContext(), R.color.gray_700));
                 } catch (Throwable _t) {}
             }
-            // file accent
+            
+            // 设置文件渐变色条
             try {
                 if (vh.accent != null) {
                     int color = generateAccentForKey(it.id == null ? "<nofile>" : it.id);
@@ -190,31 +244,33 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     GradientDrawable gd = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{color, endColor});
                     float radius = vh.itemView.getResources().getDisplayMetrics().density * 4f;
                     gd.setCornerRadius(radius);
-                    // make file accent slightly wider
+                    // 文件色条稍宽
                     ViewGroup.LayoutParams lp = vh.accent.getLayoutParams();
                     lp.width = (int)(vh.itemView.getResources().getDisplayMetrics().density * 10);
                     vh.accent.setLayoutParams(lp);
                     vh.accent.setBackground(gd);
-                    vh.itemView.setElevation(vh.itemView.getResources().getDisplayMetrics().density * 6);
                     if (vh.rootCard != null) {
                         vh.rootCard.setBackgroundTintList(android.content.res.ColorStateList.valueOf(ContextCompat.getColor(vh.itemView.getContext(), R.color.background_color)));
                     }
                 }
             } catch (Throwable _t) {}
-            // short click toggles expand/collapse
+            
+            // 短按切换展开/折叠
             vh.itemView.setOnClickListener(v -> toggleFile(it.id, vh));
-            // add custom 2s long-press detection
+            // 添加2秒长按检测
             if (longPressListener != null) {
                 setupLongPressDetector(vh.itemView, () -> longPressListener.onItemLongPress(it.type, it.id, pos));
             } else {
                 vh.itemView.setOnTouchListener(null);
             }
+            
         } else if (it.type == TYPE_SHEET) {
-            // prettify sheet title: if name is stored as xl/worksheets/sheet1.xml, try to present the original sheet name if available
+            // === Sheet类型绑定 ===
+            // 美化Sheet标题：如果名称为xl/worksheets/sheet1.xml格式，尝试提取原始Sheet名
             String raw = it.title == null ? "(sheet)" : it.title;
             String pretty = raw;
             if (raw.startsWith("xl/worksheets/")) {
-                // likely stored as path; remove prefix and extension
+                // 可能是路径格式；移除前缀和扩展名
                 pretty = raw.replaceFirst("^xl/worksheets/", "").replaceAll("\\.xml$", "");
                 // if the parser provided a workbook mapping later we may replace this with the user-friendly name
             }
@@ -250,7 +306,6 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     lp.width = (int)(vh.itemView.getResources().getDisplayMetrics().density * 6);
                     vh.accent.setLayoutParams(lp);
                     vh.accent.setBackground(gd);
-                    vh.itemView.setElevation(vh.itemView.getResources().getDisplayMetrics().density * 2);
                     if (vh.rootCard != null) {
                         vh.rootCard.setBackgroundTintList(android.content.res.ColorStateList.valueOf(ContextCompat.getColor(vh.itemView.getContext(), R.color.sheet_row_bg)));
                     }
@@ -281,6 +336,23 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             vh.itemView.setOnClickListener(null);
             vh.tvTitle.setSingleLine(true);
             vh.tvTitle.setEllipsize(TextUtils.TruncateAt.END);
+            // Render interest score fill and text
+            renderInterestSegments(vh, c.interest);
+        }
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, @NonNull List<Object> payloads) {
+        if (payloads.isEmpty()) {
+            // Full bind
+            onBindViewHolder(holder, position);
+        } else {
+            // Partial update for interest changes
+            Item it = display.get(position);
+            VH vh = (VH) holder;
+            if (it != null && it.type == TYPE_COURSE && it.course != null) {
+                renderInterestSegments(vh, it.course.interest);
+            }
         }
     }
 
@@ -348,6 +420,16 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         return display.get(position).parentId;
     }
 
+    // Find position of item with given id
+    public int findPositionById(String id) {
+        if (id == null) return -1;
+        for (int i = 0; i < display.size(); i++) {
+            Item it = display.get(i);
+            if (it != null && id.equals(it.id)) return i;
+        }
+        return -1;
+    }
+
     // Programmatic collapse helpers: ensure files/sheets are collapsed (used after import)
     public void collapseFile(String fileId) {
         if (fileId == null) return;
@@ -395,7 +477,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     static class VH extends RecyclerView.ViewHolder {
-        TextView tvTitle, tvMeta;
+        TextView tvTitle, tvMeta, tvInterestScore;
         View arrow;
         View accent;
         View rootCard;
@@ -403,6 +485,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             super(itemView);
             tvTitle = itemView.findViewById(R.id.tv_title);
             tvMeta = itemView.findViewById(R.id.tv_meta);
+            tvInterestScore = itemView.findViewById(R.id.tv_interest_score);
             // arrow may or may not exist depending on layout
             arrow = itemView.findViewById(R.id.iv_arrow);
             accent = itemView.findViewById(R.id.v_accent);
@@ -483,6 +566,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 if (!safeEquals(ca.teachers, cb.teachers)) return false;
                 if (!safeEquals(ca.unit, cb.unit)) return false;
                 if (!safeEquals(ca.rawTime, cb.rawTime)) return false;
+                if (ca.interest != cb.interest) return false; // Include interest in comparison
                 return true;
             }
             // fallback: compare titles
@@ -519,5 +603,34 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         hue = (hue + 25) % 360;
         float[] hsv = new float[]{hue, 0.6f, 0.85f};
         return Color.HSVToColor(hsv);
+    }
+
+    // Render interest score visualization: background fill and score text
+    private void renderInterestSegments(VH vh, int finalScore) {
+        if (vh == null) return;
+
+        // Update score text
+        if (vh.tvInterestScore != null) {
+            vh.tvInterestScore.setText(String.valueOf(finalScore));
+        }
+
+        // Update background fill using ClipDrawable
+        if (vh.rootCard != null) {
+            try {
+                android.graphics.drawable.Drawable bg = vh.rootCard.getBackground();
+                if (bg instanceof android.graphics.drawable.LayerDrawable) {
+                    android.graphics.drawable.LayerDrawable ld = (android.graphics.drawable.LayerDrawable) bg;
+                    android.graphics.drawable.Drawable fillLayer = ld.getDrawable(1); // ClipDrawable is at index 1 after LayerList reordering
+                    if (fillLayer instanceof android.graphics.drawable.ClipDrawable) {
+                        android.graphics.drawable.ClipDrawable cd = (android.graphics.drawable.ClipDrawable) fillLayer;
+                        // Calculate level: 0-10000, where 10000 = 10.0 score
+                        int level = (int) (10000f * (finalScore / 10.0f));
+                        cd.setLevel(level);
+                    }
+                }
+            } catch (Throwable _t) {
+                // Fallback: ignore rendering errors
+            }
+        }
     }
 }

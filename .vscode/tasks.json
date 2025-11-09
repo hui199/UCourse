@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "compile_clean",
+			"type": "shell",
+			"command": "cd build\\ms & do_compile_clean.bat",
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}

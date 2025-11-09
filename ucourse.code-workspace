@@ -1,0 +1,24 @@
+{
+
+  "settings": {  // 所有工作区配置必须放在 settings 节点下
+    // 排除文件/文件夹（资源管理器中隐藏，且不参与搜索）
+    "files.exclude": {
+      ".idea/": true,
+      ".vscode/": true,
+      "app/build/": true,
+      "app/libs/": true,
+      "build/": true,
+      "app/src/test/": true,
+      "app/src/androidTest/": true,
+      ".gradle/": true,
+	  "java.server.initialMemory": "1G",
+	  "java.server.maxMemory": "4G"
+    }
+  },
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {}
+}

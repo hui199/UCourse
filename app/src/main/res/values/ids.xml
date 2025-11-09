@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Custom tag ids used as keys for view.setTag/getTag -->
+    <item name="tag_long_pressed" type="id"/>
+</resources>

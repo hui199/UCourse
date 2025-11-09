@@ -9,27 +9,46 @@
     android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
+        android:id="@+id/root_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:background="@drawable/bg_item_card"
-        android:padding="12dp"
-        android:elevation="1dp">
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="课程名"
+                android:textColor="@color/header_text_color" />
+
+            <TextView
+                android:id="@+id/tv_meta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/gray_700"
+                android:text="教师 · 学院 · 时间" />
+
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/tv_title"
-            android:layout_width="match_parent"
+            android:id="@+id/tv_interest_score"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="课程名"
-            android:textColor="@color/header_text_color" />
-
-        <TextView
-            android:id="@+id/tv_meta"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="@color/gray_700"
-            android:text="教师 · 学院 · 时间" />
+            android:layout_gravity="center_vertical"
+            android:text="5"
+            android:textSize="16sp"
+            android:textColor="@color/header_text_color"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp" />
 
     </LinearLayout>
 
