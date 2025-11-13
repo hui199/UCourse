@@ -16,6 +16,7 @@ public class Course {
     public int interest = 5;   // 兴趣分数（0-10分，默认5分）
     public String fileId;      // 来源文件ID
     public String sheetName;   // 来源Sheet名称
+    public int sheetIndex = 0; // Sheet索引（用于排序显示）
     public String groupKey;    // 分组键（通常为学院名称）
 
     public Course() {}
@@ -25,6 +26,7 @@ public class Course {
      * 
      * @param fileId     文件ID
      * @param sheetName  Sheet名称
+     * @param sheetIndex Sheet索引（用于排序）
      * @param rows       数据行列表（不含表头）
      * @param titleIdx   标题列索引
      * @param timeIdx    时间列索引
@@ -32,7 +34,7 @@ public class Course {
      * @param unitIdx    单位列索引
      * @return 课程列表
      */
-    public static List<Course> fromRows(String fileId, String sheetName, List<String[]> rows, int titleIdx, int timeIdx, int teacherIdx, int unitIdx) {
+    public static List<Course> fromRows(String fileId, String sheetName, int sheetIndex, List<String[]> rows, int titleIdx, int timeIdx, int teacherIdx, int unitIdx) {
         List<Course> out = new ArrayList<>();
         for (int i = 0; i < rows.size(); i++) {
             String[] r = rows.get(i);
@@ -40,6 +42,7 @@ public class Course {
             Course c = new Course();
             c.fileId = fileId;
             c.sheetName = sheetName;
+            c.sheetIndex = sheetIndex;
             c.title = titleIdx >=0 && titleIdx < r.length ? r[titleIdx] : "";
             c.rawTime = timeIdx >=0 && timeIdx < r.length ? r[timeIdx] : "";
             c.teachers = teacherIdx >=0 && teacherIdx < r.length ? r[teacherIdx] : "";

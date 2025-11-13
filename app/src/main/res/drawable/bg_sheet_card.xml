@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sheet卡片背景 - 包含滑动评分的进度条效果 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 背景层 -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#F8F9FA" />
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+    <!-- 进度条层（用于批量调整Sheet下所有课程分数的视觉反馈） -->
+    <item>
+        <clip
+            android:drawable="@drawable/bg_fill_gradient"
+            android:clipOrientation="horizontal"
+            android:gravity="left" />
+    </item>
+    <!-- 边框层 -->
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="0.3dp" android:color="#15000000" />
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+</layer-list>

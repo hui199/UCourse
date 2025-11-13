@@ -40,6 +40,18 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     private static final int TYPE_FILE = 0;   // 文件类型
     private static final int TYPE_SHEET = 1;  // Sheet类型
     private static final int TYPE_COURSE = 2; // 课程类型
+    
+    // Sheet信息辅助类（用于排序）
+    private static class SheetInfo {
+        String sheetName;
+        int minSheetIndex;  // 该Sheet中最小的课程sheetIndex
+        List<Course> courses = new ArrayList<>();
+        
+        SheetInfo(String name, int index) {
+            this.sheetName = name;
+            this.minSheetIndex = index;
+        }
+    }
 
     // 扁平化的显示列表（包含所有可见的文件/Sheet/课程）
     private final List<Item> display = new ArrayList<>();
@@ -50,6 +62,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     private final Set<String> expandedSheets = new HashSet<>();
     // 缓存每个文件的Sheet数量（重建display时计算）
     private final Map<String, Integer> sheetCountByFile = new java.util.HashMap<>();
+    // 缓存每个Sheet的课程数量
+    private final Map<String, Integer> courseCountBySheet = new java.util.HashMap<>();
     
     /**
      * 长按监听器接口
@@ -105,18 +119,25 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         if (rawCourses == null || rawCourses.isEmpty()) return out;
         
         // 第一步：按文件和Sheet分组
-        Map<String, Map<String, List<Course>>> byFile = new LinkedHashMap<>();
+        // 使用临时结构存储Sheet信息（包括最小的sheetIndex）
+        Map<String, Map<String, SheetInfo>> byFile = new LinkedHashMap<>();
         for (Course c : rawCourses) {
             String f = c.fileId == null ? "<nofile>" : c.fileId;
             String s = c.sheetName == null ? "<nosheet>" : c.sheetName;
             byFile.putIfAbsent(f, new LinkedHashMap<>());
-            Map<String, List<Course>> fm = byFile.get(f);
-            fm.putIfAbsent(s, new ArrayList<>());
-            fm.get(s).add(c);
+            Map<String, SheetInfo> fm = byFile.get(f);
+            if (!fm.containsKey(s)) {
+                fm.put(s, new SheetInfo(s, c.sheetIndex));
+            }
+            fm.get(s).courses.add(c);
+            // 更新最小sheetIndex（用于排序）
+            if (c.sheetIndex < fm.get(s).minSheetIndex) {
+                fm.get(s).minSheetIndex = c.sheetIndex;
+            }
         }
         
         // 第二步：构建扁平化显示列表
-        for (Map.Entry<String, Map<String, List<Course>>> fe : byFile.entrySet()) {
+        for (Map.Entry<String, Map<String, SheetInfo>> fe : byFile.entrySet()) {
             String fileId = fe.getKey();
             // 记录该文件的Sheet数量（用于徽章显示）
             try { sheetCountByFile.put(fileId, fe.getValue() == null ? 0 : fe.getValue().size()); } catch (Throwable _t) { sheetCountByFile.put(fileId, 0); }
@@ -128,22 +149,32 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             fileItem.title = fileId;
             out.add(fileItem);
             
-            Map<String, List<Course>> sheets = fe.getValue();
+            Map<String, SheetInfo> sheets = fe.getValue();
             // 只有当文件展开时才显示Sheet
             if (expandedFiles.contains(fileId)) {
+                // 按sheetIndex排序Sheet
+                List<SheetInfo> sortedSheets = new ArrayList<>(sheets.values());
+                java.util.Collections.sort(sortedSheets, (a, b) -> Integer.compare(a.minSheetIndex, b.minSheetIndex));
+                
                 // 添加Sheet项
-                for (Map.Entry<String, List<Course>> se : sheets.entrySet()) {
-                    String sheetName = se.getKey();
+                for (SheetInfo sheetInfo : sortedSheets) {
+                    String sheetName = sheetInfo.sheetName;
+                    String sheetId = fileId + "|" + sheetName;
+                    
+                    // 记录该Sheet的课程数量
+                    List<Course> coursesInSheet = sheetInfo.courses;
+                    courseCountBySheet.put(sheetId, coursesInSheet != null ? coursesInSheet.size() : 0);
+                    
                     Item sheetItem = new Item();
                     sheetItem.type = TYPE_SHEET;
-                    sheetItem.id = fileId + "|" + sheetName;
+                    sheetItem.id = sheetId;
                     sheetItem.title = sheetName;
                     sheetItem.parentId = fileId;
                     out.add(sheetItem);
                     
                     // 只有当Sheet展开时才显示课程
                     if (expandedSheets.contains(sheetItem.id)) {
-                        for (Course c : se.getValue()) {
+                        for (Course c : coursesInSheet) {
                             Item ci = new Item();
                             ci.type = TYPE_COURSE;
                             ci.id = c.id;
@@ -198,6 +229,11 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             String base = full;
             int idx = full.lastIndexOf('/');
             if (idx >= 0 && idx < full.length()-1) base = full.substring(idx+1);
+            
+            // 去除文件扩展名和括号编号（例如：file(1).xlsx → file）
+            base = base.replaceAll("\\.[a-zA-Z0-9]+$", ""); // 去除扩展名（.xlsx, .csv等）
+            base = base.replaceAll("\\(\\d+\\)$", "");      // 去除括号编号（(1), (2)等）
+            base = base.trim();
             
             // 使用缓存的Sheet数量（在构建display时计算）
             int sheetCount = 0;
@@ -272,21 +308,37 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             if (raw.startsWith("xl/worksheets/")) {
                 // 可能是路径格式；移除前缀和扩展名
                 pretty = raw.replaceFirst("^xl/worksheets/", "").replaceAll("\\.xml$", "");
-                // if the parser provided a workbook mapping later we may replace this with the user-friendly name
             }
             String disp = maybeTruncate(pretty);
             vh.tvTitle.setText(disp);
-            vh.tvTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            vh.tvTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
             vh.tvTitle.setTypeface(Typeface.DEFAULT);
-            // increase left indent for sheet rows to emphasize hierarchy
-            vh.tvTitle.setPadding((int)(vh.itemView.getResources().getDisplayMetrics().density * 12), 0, 0, 0);
-            vh.tvTitle.setTextColor(ContextCompat.getColor(vh.itemView.getContext(), R.color.gray_900));
-            // do not show expand/collapse text for sheet rows
+            vh.tvTitle.setTextColor(ContextCompat.getColor(vh.itemView.getContext(), R.color.text_secondary));
+            
+            // 显示课程数量
+            int courseCount = courseCountBySheet.getOrDefault(it.id, 0);
+            try {
+                android.widget.TextView tvCount = vh.itemView.findViewById(R.id.tv_count);
+                if (tvCount != null) {
+                    tvCount.setText("[" + courseCount + "]");
+                    tvCount.setVisibility(View.VISIBLE);
+                }
+            } catch (Throwable _t) {}
+            
+            // 隐藏分数显示（只在滑动时显示）
+            try {
+                android.widget.TextView tvScore = vh.itemView.findViewById(R.id.tv_interest_score);
+                if (tvScore != null) {
+                    tvScore.setVisibility(View.GONE);
+                }
+            } catch (Throwable _t) {}
+            
             vh.tvMeta.setText("");
             vh.tvMeta.setTextColor(ContextCompat.getColor(vh.itemView.getContext(), R.color.gray_600));
             vh.tvTitle.setSingleLine(true);
             vh.tvTitle.setEllipsize(TextUtils.TruncateAt.END);
-            // title background removed for sheet rows as well
+            
+            // 箭头根据展开状态旋转
             if (vh.arrow != null) {
                 vh.arrow.setRotation(expandedSheets.contains(it.id) ? 90f : 0f);
                 try {
@@ -318,10 +370,14 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 vh.itemView.setOnTouchListener(null);
             }
         } else {
-            // course
+            // === 课程类型绑定 ===
             Course c = it.course;
             vh.tvTitle.setText(c.title == null || c.title.isEmpty() ? "(未命名)" : c.title);
-            vh.tvMeta.setText((c.teachers == null ? "" : c.teachers) + " · " + (c.unit == null ? "" : c.unit) + " · " + (c.rawTime == null ? "" : c.rawTime));
+            
+            // 格式化课程信息：教师 · 时间（精简版）
+            String metaText = formatCourseInfo(c);
+            vh.tvMeta.setText(metaText);
+            
             // set subtle grouping background based on parent sheet id to save horizontal space
             if (it.parentId != null) {
                 // derive a stable but simple hash to alternate color per sheet
@@ -354,6 +410,80 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 renderInterestSegments(vh, it.course.interest);
             }
         }
+    }
+
+    /**
+     * 格式化课程信息为简洁格式
+     * 显示：教师 · 时间（如：周一7~9节）· 地点
+     * 
+     * @param c 课程对象
+     * @return 格式化后的字符串
+     */
+    /**
+     * 格式化课程信息为简洁的显示格式
+     * 只显示：教师名（无title） · 时间（精简） · 地点
+     * 
+     * @param c 课程对象
+     * @return 格式化后的信息字符串
+     */
+    private String formatCourseInfo(Course c) {
+        StringBuilder sb = new StringBuilder();
+        
+        // 1. 教师（移除"教师："前缀和括号内的职称）
+        String teacher = c.teachers == null ? "" : c.teachers.trim();
+        if (!teacher.isEmpty()) {
+            // 移除可能的"教师："前缀
+            teacher = teacher.replaceAll("^(教师|老师)[:：]?\\s*", "");
+            // 移除括号及括号内的内容（如"(教授)"、"（副教授）"等）
+            teacher = teacher.replaceAll("[\\(（][^\\)）]*[\\)）]", "");
+            teacher = teacher.trim();
+            if (!teacher.isEmpty()) {
+                sb.append(teacher);
+            }
+        }
+        
+        // 2. 时间信息（精简版）
+        String timeInfo = parseTimeInfo(c.rawTime);
+        if (!timeInfo.isEmpty()) {
+            if (sb.length() > 0) sb.append(" · ");
+            sb.append(timeInfo);
+        }
+        
+        return sb.toString();
+    }
+    
+    /**
+     * 解析时间字符串，提取关键信息
+     * 输入示例："1-16周 每周一7-9节 二教301"
+     * 输出示例："周一7~9节 · 二教301"
+     * 
+     * @param rawTime 原始时间字符串
+     * @return 精简后的时间信息
+     */
+    private String parseTimeInfo(String rawTime) {
+        if (rawTime == null || rawTime.trim().isEmpty()) {
+            return "";
+        }
+        
+        String time = rawTime.trim();
+        
+        // 移除周次信息（如"1-16周"、"1~16周"）
+        time = time.replaceAll("\\d+[-~]\\d+周\\s*", "");
+        // 移除"每周"
+        time = time.replaceAll("每周", "");
+        // 移除单独的"周"字后面的空格
+        time = time.replaceAll("周\\s+", "周");
+        // 规范化空格
+        time = time.replaceAll("\\s+", " ");
+        
+        // 将"7-9节"改为"7~9节"（更简洁）
+        time = time.replaceAll("(\\d+)-(\\d+)节", "$1~$2节");
+        
+        // 如果包含地点信息，用" · "分隔时间和地点
+        // 尝试识别常见的地点模式（如"二教301"、"理教205"等）
+        time = time.replaceAll("([节])\\s*([^\\s]+[教室楼馆]\\d+)", "$1 · $2");
+        
+        return time.trim();
     }
 
     // helper: truncate rule — if text too long (>40 chars) show first half

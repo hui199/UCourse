@@ -2,8 +2,19 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="6dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
     android:foreground="?attr/selectableItemBackground">
+
+    <!-- 左侧边框指示器 -->
+    <View
+        android:layout_width="4dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="-12dp"
+        android:background="#9E9E9E"
+        android:alpha="0.5" />
 
     <LinearLayout
         android:id="@+id/root_card"
@@ -11,26 +22,21 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="@drawable/bg_item_card"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
+        android:background="@drawable/bg_sheet_card"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
 
-        <View
-            android:id="@+id/v_accent"
-            android:layout_width="6dp"
-            android:layout_height="match_parent"
-            android:layout_marginEnd="10dp"
-            android:background="@drawable/accent_left_gradient" />
-
+        <!-- Sheet展开箭头 -->
         <ImageView
             android:id="@+id/iv_arrow"
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="10dp"
             android:contentDescription="展开"
-            android:src="@drawable/ic_chevron_right" />
+            android:src="@drawable/ic_chevron_right"
+            android:tint="@color/gray_600" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -45,9 +51,19 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="工作表名"
+                android:textSize="15sp"
+                android:textColor="@color/text_secondary"
                 android:ellipsize="end"
-                android:singleLine="true"
-                android:textColor="@color/header_text_color" />
+                android:singleLine="true" />
+
+            <TextView
+                android:id="@+id/tv_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textSize="13sp"
+                android:textColor="@color/gray_600"
+                android:text="[0]" />
 
             <TextView
                 android:id="@+id/tv_meta"
@@ -57,6 +73,27 @@
                 android:text="折叠"
                 android:textColor="@color/side_bar_text_color" />
         </LinearLayout>
+        
+        <!-- Sheet平均分显示（滑动批量调整时可见） -->
+        <TextView
+            android:id="@+id/tv_interest_score"
+            android:layout_width="32dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:gravity="end"
+            android:text="5"
+            android:textSize="16sp"
+            android:textColor="@color/text_secondary"
+            android:textStyle="bold"
+            android:layout_marginStart="12dp"
+            android:visibility="gone" />
+        
+        <!-- 隐藏的accent view，保持兼容性 -->
+        <View
+            android:id="@+id/v_accent"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
     </LinearLayout>
 
 </FrameLayout>

@@ -2,7 +2,10 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp"
+    android:paddingStart="0dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
     android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
@@ -12,19 +15,12 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="@drawable/bg_item_card"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
 
-        <!-- left accent stripe -->
-        <View
-            android:id="@+id/v_accent"
-            android:layout_width="6dp"
-            android:layout_height="match_parent"
-            android:layout_marginEnd="10dp"
-            android:background="@drawable/accent_left_gradient" />
-
+        <!-- 移除左侧渐变色条，改用更简洁的设计 -->
         <ImageView
             android:id="@+id/iv_arrow"
             android:layout_width="24dp"
@@ -45,6 +41,7 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
+                android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="@color/header_text_color"
                 android:ellipsize="end"
@@ -56,6 +53,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:textSize="14sp"
                 android:textColor="@color/primaryColor"
                 android:textStyle="bold"
                 android:text="[0]" />
@@ -69,6 +67,13 @@
                 android:text="文件"
                 android:textColor="@color/side_bar_text_color" />
         </LinearLayout>
+        
+        <!-- 隐藏的accent view，保持兼容性 -->
+        <View
+            android:id="@+id/v_accent"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
     </LinearLayout>
 
 </FrameLayout>

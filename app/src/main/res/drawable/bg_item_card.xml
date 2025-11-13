@@ -1,24 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 课程卡片背景 - 包含滑动评分的进度条效果 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Background -->
+    <!-- 背景层 -->
     <item>
         <shape android:shape="rectangle">
             <solid android:color="@color/background_color" />
-            <corners android:radius="12dp" />
+            <corners android:radius="16dp" />
         </shape>
     </item>
-    <!-- Fill layer using ClipDrawable -->
+    <!-- 进度条层（使用ClipDrawable实现滑动评分视觉反馈） -->
     <item>
         <clip
             android:drawable="@drawable/bg_fill_gradient"
             android:clipOrientation="horizontal"
             android:gravity="left" />
-    </item>
-    <!-- Stroke overlay -->
-    <item>
-        <shape android:shape="rectangle">
-            <stroke android:width="0.5dp" android:color="@color/divider_color" />
-            <corners android:radius="12dp" />
-        </shape>
     </item>
 </layer-list>
