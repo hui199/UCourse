@@ -39,6 +39,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.HashMap;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
 
 /**
  * 主页Fragment - 负责课程导入、展示和评分管理
@@ -583,13 +585,39 @@ public class HomeFragment extends Fragment {
             try (InputStream is = getContext().getContentResolver().openInputStream(uri)) {
                 if (is == null) return;
                 
-                // 获取文件路径（用于标识导入来源）
+                // 优先通过ContentResolver获取显示名（OpenableColumns.DISPLAY_NAME），回退到lastPathSegment
+                String displayName = null;
+                Cursor cursor = null;
+                try {
+                    cursor = getContext().getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null);
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                        if (idx != -1) displayName = cursor.getString(idx);
+                    }
+                } catch (Throwable _t) {
+                    // ignore
+                } finally {
+                    if (cursor != null) cursor.close();
+                }
+
                 String path = uri.getLastPathSegment();
-                // 移除URI前缀（如"primary:"、"downloads:"等）
                 if (path != null && path.contains(":")) {
                     path = path.substring(path.lastIndexOf(":") + 1);
                 }
-                final String finalPath = path;  // 创建final副本供lambda使用
+                // 如果displayName看起来像数字（很多provider会返回文档ID如"35"），尝试使用DocumentFile获取更友好的name
+                String chosenName = displayName;
+                try {
+                    if (chosenName == null || chosenName.matches("^\\d+$")) {
+                        androidx.documentfile.provider.DocumentFile df = androidx.documentfile.provider.DocumentFile.fromSingleUri(getContext(), uri);
+                        if (df != null) {
+                            String dn = df.getName();
+                            if (dn != null && !dn.isEmpty()) chosenName = dn;
+                        }
+                    }
+                } catch (Throwable _t) {
+                    // ignore
+                }
+                final String finalPath = (chosenName != null && !chosenName.isEmpty()) ? chosenName : path;
                 List<Course> parsed = new ArrayList<>();
                 
                 // CSV文件处理

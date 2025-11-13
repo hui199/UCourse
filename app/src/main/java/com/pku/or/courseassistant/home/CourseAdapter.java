@@ -238,10 +238,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             // 使用缓存的Sheet数量（在构建display时计算）
             int sheetCount = 0;
             try { sheetCount = sheetCountByFile.getOrDefault(it.id == null ? "<nofile>" : it.id, 0); } catch (Throwable _t) { sheetCount = 0; }
-            String titleWithCount = base + " (" + sheetCount + ")";
-            
-            // 截断过长的标题（>40字符时显示前半部分）
-            String disp = maybeTruncate(titleWithCount);
+            // 只显示文件名，不在标题内重复显示数量（数量已在右侧[ N ] 显示）
+            String disp = maybeTruncate(base);
             vh.tvTitle.setText(disp);
             vh.tvTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
             vh.tvTitle.setTypeface(Typeface.DEFAULT_BOLD);

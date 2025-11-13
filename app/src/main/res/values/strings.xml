@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CourseAssistant</string>
+    <string name="app_name">UCourse</string>
     <string name="hello_home_fragment">Hello home fragment</string>
     <string name="hello_result_fragment">Hello result fragment</string>
     <string name="hello_time_fragment">Hello time fragment</string>

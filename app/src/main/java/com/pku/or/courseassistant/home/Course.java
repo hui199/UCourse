@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 课程数据模型
+ * Course.java - 课程数据模型
  * 存储从CSV/Excel导入的课程信息
  */
 public class Course {
