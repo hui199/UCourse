@@ -470,8 +470,10 @@ public class TimeTableView extends View {
         if (isSelecting && currentDay >= 0 && currentStartSection >= 0 && currentEndSection >= 0) {
             float left = sideBarWidth + currentDay * cellWidth + cellWidth * 0.1f;
             float right = left + cellWidth * 0.8f;
-            float top = headerHeight + currentStartSection * cellHeight;
-            float bottom = headerHeight + (currentEndSection + 1) * cellHeight;
+            int start = Math.min(currentStartSection, currentEndSection);
+            int end = Math.max(currentStartSection, currentEndSection);
+            float top = headerHeight + start * cellHeight;
+            float bottom = headerHeight + (end + 1) * cellHeight;
 
             RectF rect = new RectF(left, top, right, bottom);
 
