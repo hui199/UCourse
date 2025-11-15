@@ -12,6 +12,7 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.view.View;
 import android.widget.DatePicker;
 import android.widget.Toast;
@@ -80,8 +81,11 @@ public class TimeTableView extends View {
     private long touchStartTime = 0;
     private boolean isLongPressTriggered = false;
     private TimeSlot longPressedSlot = null;
+    private boolean isCountingLongPress = false; // 正在计时但未到时的视觉反馈
     private Handler longPressHandler = new Handler();
     private Runnable longPressRunnable;
+    private float downX = 0f, downY = 0f;
+    private int touchSlop = 0; // 触摸容差，放在 init 中初始化
 
     // 日期相关
     private Calendar currentStartDate; // 当前显示的开始日期
@@ -149,6 +153,9 @@ public class TimeTableView extends View {
                 handleLongPress();
             }
         };
+
+        // touch slop for move tolerance
+        touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
 
         setClickable(true);
     }
@@ -480,14 +487,25 @@ public class TimeTableView extends View {
     }
 
     private void drawLongPressEffect(Canvas canvas) {
-        if (isLongPressTriggered && longPressedSlot != null) {
+        if (longPressedSlot != null) {
             float left = sideBarWidth + longPressedSlot.getDay() * cellWidth + cellWidth * 0.1f;
             float right = left + cellWidth * 0.8f;
             float top = headerHeight + longPressedSlot.getStartSection() * cellHeight;
             float bottom = headerHeight + (longPressedSlot.getEndSection() + 1) * cellHeight;
 
-            RectF rect = new RectF(left, top, right, bottom);
-            canvas.drawRoundRect(rect, 8, 8, longPressPaint);
+            if (isLongPressTriggered) {
+                RectF rect = new RectF(left, top, right, bottom);
+                canvas.drawRoundRect(rect, 8, 8, longPressPaint);
+            } else if (isCountingLongPress) {
+                // enlarge more noticeably during countdown: draw an opaque green filled rect on top
+                float pad = Math.min(cellWidth * 0.09f, 20f);
+                RectF rect = new RectF(left - pad, top - pad, right + pad, bottom + pad);
+                Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                // use a solid green color for high contrast (match selection color but fully opaque)
+                fillPaint.setColor(0xFF4CAF50);
+                fillPaint.setStyle(Paint.Style.FILL);
+                canvas.drawRoundRect(rect, 12, 12, fillPaint);
+            }
         }
     }
 
@@ -659,7 +677,15 @@ public class TimeTableView extends View {
             if (clickedSlot != null) {
                 longPressedSlot = clickedSlot;
                 touchStartTime = System.currentTimeMillis();
+                // record down coordinates for slop tolerance
+                downX = x;
+                downY = y;
+                // start counting long press and show slight visual enlargement
+                isCountingLongPress = true;
+                // prevent parent (e.g., scroll container) from intercepting touch during long-press
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
                 longPressHandler.postDelayed(longPressRunnable, LONG_PRESS_DURATION);
+                invalidate();
                 return;
             }
 
@@ -675,12 +701,20 @@ public class TimeTableView extends View {
 
     private void handleActionMove(float x, float y) {
         float adjustedX = x - contentOffsetX;
-        if (longPressedSlot != null) {
-            longPressHandler.removeCallbacks(longPressRunnable);
-            longPressedSlot = null;
-            isLongPressTriggered = false;
-            invalidate();
-        }
+            if (longPressedSlot != null) {
+                float dx = Math.abs(x - downX);
+                float dy = Math.abs(y - downY);
+                if (dx > touchSlop || dy > touchSlop) {
+                    // considered a move -> cancel long press
+                    longPressHandler.removeCallbacks(longPressRunnable);
+                    longPressedSlot = null;
+                    isLongPressTriggered = false;
+                    isCountingLongPress = false;
+                    // allow parent to intercept again
+                    if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+                    invalidate();
+                }
+            }
 
     if (!isSelecting || currentDay < 0) return;
 
@@ -695,9 +729,17 @@ public class TimeTableView extends View {
 
     private void handleActionUp() {
         longPressHandler.removeCallbacks(longPressRunnable);
+        isCountingLongPress = false;
 
         if (isLongPressTriggered) {
             isLongPressTriggered = false;
+            longPressedSlot = null;
+            invalidate();
+            return;
+        }
+
+        // If user released before long-press timeout on an existing slot, clear the pressed slot
+        if (longPressedSlot != null) {
             longPressedSlot = null;
             invalidate();
             return;
@@ -710,16 +752,17 @@ public class TimeTableView extends View {
 
         TimeSlot newSlot = new TimeSlot(currentDay, start, end);
 
-        if (canAddTimeSlot(currentDay, newSlot)) {
-            addTimeSlot(newSlot);
-        }
+        // Add and merge with adjacent/overlapping slots so slight overshoot still merges as expected
+        addOrMergeTimeSlot(newSlot);
 
         resetSelection();
+        if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
     }
 
     private void handleLongPress() {
         if (longPressedSlot != null) {
             isLongPressTriggered = true;
+            isCountingLongPress = false;
             removeTimeSlot(longPressedSlot);
 
             String dayStr = getDayString(longPressedSlot.getDay());
@@ -728,6 +771,7 @@ public class TimeTableView extends View {
             Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
 
             invalidate();
+            if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
         }
     }
 
@@ -786,6 +830,40 @@ public class TimeTableView extends View {
             updateWeekData();
             invalidate();
         }
+    }
+
+    /**
+     * Add a timeslot and merge with adjacent/overlapping slots. This ensures slight overshoot
+     * when the user lifts the finger still results in a merged continuous slot.
+     */
+    public void addOrMergeTimeSlot(TimeSlot newSlot) {
+        if (newSlot == null) return;
+        int day = newSlot.getDay();
+        List<TimeSlot> daySlots = timeSlotsMap.get(day);
+        if (daySlots == null) return;
+
+        // Collect slots to merge with
+        List<TimeSlot> toMerge = new ArrayList<>();
+        for (TimeSlot s : daySlots) {
+            if (s.overlaps(newSlot) || s.isAdjacent(newSlot) || newSlot.overlaps(s) || newSlot.isAdjacent(s)) {
+                toMerge.add(s);
+            }
+        }
+
+        // Merge into newSlot
+        for (TimeSlot m : toMerge) {
+            newSlot.mergeWith(m);
+        }
+
+        // Remove merged slots from daySlots
+        daySlots.removeAll(toMerge);
+        daySlots.add(newSlot);
+
+        // Re-merge full list to normalize and sort
+        mergeTimeSlots(day);
+        notifyTimeSlotCreated(newSlot);
+        updateWeekData();
+        invalidate();
     }
 
     public void clearTimeSlots() {
