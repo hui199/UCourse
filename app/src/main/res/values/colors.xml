@@ -1,41 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 绿色主题颜色 -->
-    <color name="grid_line_color">#E0E0E0</color>
-    <color name="time_slot_color">#4CAF50</color>
-    <color name="time_slot_stroke_color">#388E3C</color>
-    <color name="header_text_color">#333333</color>
-    <color name="side_bar_text_color">#333333</color>
-    <color name="background_color">#FFFFFF</color>
-
-    <!-- 恢复黄色、绿色、蓝色背景色 -->
-    <color name="morning_background">#FFF9C4</color>    <!-- 浅黄色上午 -->
-    <color name="afternoon_background">#C8E6C9</color>  <!-- 浅绿色下午 -->
-    <color name="evening_background">#BBDEFB</color>    <!-- 浅蓝色晚上 -->
-
-    <!-- 今天高亮色 -->
-    <color name="today_highlight_color">#81C784</color>
-    <!-- sheet visuals -->
-    <color name="sheet_gutter_color">#22000000</color>
-    <color name="sheet_group_bg_even">#FFFFFFFF</color>
-    <color name="sheet_group_bg_odd">#FFF8F9FB</color>
-    <!-- accent colors for gradient -->
-    <color name="accent_start">#FF7CFC</color>
-    <color name="accent_mid">#7C4DFF</color>
-    <color name="accent_end">#3F51B5</color>
-    <!-- helper colors for adapter visual refinement -->
+    <!-- 主要颜色 -->
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF5722</color>
+    <color name="accent_start">#FF5722</color>
+    <color name="accent_mid">#FF9800</color>
+    <color name="accent_end">#FFC107</color>
+    <color name="purple_700">#6A1B9A</color>
+    <color name="sheet_group_bg_even">#F5F5F5</color>
+    <color name="sheet_group_bg_odd">#FFFFFF</color>
     <color name="black">#000000</color>
-    <color name="gray_900">#212121</color>
-    <color name="gray_800">#424242</color>
-    <color name="gray_700">#616161</color>
+    <color name="gray_700">#424242</color>
+    <color name="sheet_row_bg">#F5F5F5</color>
+    
+    <!-- 背景和卡片颜色 -->
+    <color name="colorBackground">#F5F7FA</color>
+    <color name="colorCard">#FFFFFF</color>
+    <color name="card_normal_bg">#FFFFFF</color>
+    <color name="background_color">#F5F7FA</color>
+    
+    <!-- 文本颜色 -->
+    <color name="colorTextPrimary">#333333</color>
+    <color name="colorTextSecondary">#666666</color>
+    <color name="colorTextLight">#FFFFFF</color>
+    
+    <!-- 界面元素颜色 -->
+    <color name="colorDivider">#EEEEEE</color>
+    <color name="colorScoreBadge">#FF5722</color>
+    <color name="colorScoreBadgeDark">#D84315</color>
+    
+    <!-- 分段卡片渐变颜色 -->
+    <color name="colorSegment1">#9C27B0</color>
+    <color name="colorSegment1Dark">#7B1FA2</color>
+    <color name="colorSegment2">#2196F3</color>
+    <color name="colorSegment2Dark">#1976D2</color>
+    <color name="colorSegment3">#4CAF50</color>
+    <color name="colorSegment3Dark">#388E3C</color>
+    <color name="colorSegment4">#FF9800</color>
+    <color name="colorSegment4Dark">#F57C00</color>
+    
+    <!-- 其他Fragment需要的颜色资源 -->
+    <color name="afternoon_background">#FFF3E0</color>
+    <color name="evening_background">#E3F2FD</color>
+    <color name="morning_background">#E8F5E9</color>
+    <color name="today_highlight_color">#E3F2FD</color>
+    <color name="time_slot_stroke_color">#BDBDBD</color>
+    <color name="header_text_color">#212121</color>
+    <color name="grid_line_color">#EEEEEE</color>
+    <color name="time_slot_color">#E8EAF6</color>
+    <color name="primaryColor">#3F51B5</color>
+    <color name="side_bar_text_color">#757575</color>
     <color name="gray_600">#757575</color>
-    <color name="gray_500">#9E9E9E</color>
-    <color name="text_primary">#212121</color>
     <color name="text_secondary">#757575</color>
-    <color name="sheet_row_bg">#FFFDFDFD</color>
-    <!-- card and divider refinements -->
-    <color name="card_elevated_bg">#FFFFFFFF</color>
-    <color name="card_normal_bg">#FFF7F8FB</color>
-    <color name="divider_color">#1F000000</color>
-        <color name="primaryColor">#FF6200EE</color>
+    <color name="gray_900">#212121</color>
 </resources>

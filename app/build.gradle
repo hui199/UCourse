@@ -7,7 +7,7 @@ android {
     //buildToolsVersion "30.0.3"
 
     defaultConfig {
-    applicationId "com.pku.or.courseassistant"
+    applicationId "com.pku.or.ucourse"
         minSdkVersion 21
         targetSdkVersion 34
         versionCode 1
@@ -26,7 +26,7 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    namespace 'com.pku.or.courseassistant'
+    namespace 'com.pku.or.ucourse'
     
     buildFeatures {
         buildConfig = true

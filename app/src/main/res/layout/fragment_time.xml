@@ -9,7 +9,7 @@
 
     <!-- 移除顶部的提示文本 -->
 
-    <com.pku.or.courseassistant.view.TimeTableView
+    <com.pku.or.ucourse.view.TimeTableView
         android:id="@+id/timeTableView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
