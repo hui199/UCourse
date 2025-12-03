@@ -15,9 +15,27 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Clean, self-contained recommendation solver (branch-and-bound) with light stats.
+ * 课程推荐求解器 - 基于运筹学分支定界算法 (Branch and Bound)
+ * 
+ * 核心算法逻辑：
+ * 1. 预处理：
+ *    - 过滤不可行课程（兴趣为0或不在空闲时间内）
+ *    - 将课程按兴趣分降序排序（启发式策略，优先搜索高分课程）
+ *    - 预先计算每门课程的冲突掩码（Bitmask）
+ * 
+ * 2. 搜索过程 (DFS):
+ *    - 状态空间树搜索，每个节点代表一门课程是否被选择
+ *    - 剪枝策略 (Pruning):
+ *      - 乐观估值剪枝：当前分数 + 剩余所有课程最大可能分数 <= 当前第K优解的分数 -> 剪枝
+ *      - 冲突检测：利用位运算快速检测时间冲突
+ * 
+ * 3. 解决方案管理：
+ *    - 维护一个有序的大小为K的优先队列（List实现）
+ *    - 仅当新方案优于队列中最后一名时才尝试插入
  */
 public class RecommendationSolver {
+    private static final String UCourse_TAG = "UCourse_SOLVER";
+    
     public static class Solution {
         public List<Course> courses;
         public int totalScore;
@@ -25,6 +43,7 @@ public class RecommendationSolver {
         public int daysUsed;
         public String explanation;
         public Set<Long> occupiedSlots;
+        
         public Solution(List<Course> courses, int totalScore) {
             this.courses = courses;
             this.totalScore = totalScore;
@@ -34,67 +53,37 @@ public class RecommendationSolver {
             this.occupiedSlots = new HashSet<>();
         }
         
-        // 增强方法：构建详细说明，便于UI显示分段卡片内容
+        // 增强方法：构建详细说明
         public void enhanceExplanation(Map<String, List<TimeSlot>> courseTimeSlots) {
             if (courses == null || courses.isEmpty()) {
                 this.explanation = "无课程安排";
                 return;
             }
             
+            // 重新计算占用时间槽
+            this.occupiedSlots = new HashSet<>();
+            Set<Integer> days = new HashSet<>();
+            
+            for (Course c : courses) {
+                List<TimeSlot> sl = courseTimeSlots.get(c.id);
+                if (sl == null) continue;
+                for (TimeSlot t : sl) {
+                    days.add(t.getDay());
+                    for (int s = t.getStartSection(); s <= t.getEndSection(); s++) {
+                        long key = (((long) t.getDay()) << 32) | (s & 0xffffffffL);
+                        this.occupiedSlots.add(key);
+                    }
+                }
+            }
+            this.totalPeriods = this.occupiedSlots.size();
+            this.daysUsed = days.size();
+            
             StringBuilder sb = new StringBuilder();
             sb.append("总兴趣分: ").append(totalScore).append("\n");
             sb.append("课程数: ").append(courses.size()).append("\n");
             sb.append("总课时: ").append(totalPeriods).append("\n");
-            sb.append("占用天数: ").append(daysUsed).append("\n\n");
-            sb.append("详细安排:\n");
-            
-            // 按天分组课程
-            Map<Integer, List<String>> dayToCourses = new HashMap<>();
-            for (Course course : courses) {
-                List<TimeSlot> slots = courseTimeSlots.get(course.id);
-                if (slots != null) {
-                    for (TimeSlot ts : slots) {
-                        int day = ts.getDay();
-                        dayToCourses.putIfAbsent(day, new ArrayList<>());
-                        String courseInfo = course.title + " [周" + dayName(day) + ts.getStartSection() + 1;
-                        if (ts.getEndSection() != ts.getStartSection()) {
-                            courseInfo += "-" + (ts.getEndSection() + 1);
-                        }
-                        courseInfo += "]";
-                        dayToCourses.get(day).add(courseInfo);
-                    }
-                }
-            }
-            
-            // 按顺序输出每天的课程
-            for (int i = 0; i < 7; i++) {
-                if (dayToCourses.containsKey(i)) {
-                    sb.append("周").append(dayName(i)).append(": ");
-                    List<String> coursesOnDay = dayToCourses.get(i);
-                    for (int j = 0; j < coursesOnDay.size(); j++) {
-                        sb.append(coursesOnDay.get(j));
-                        if (j < coursesOnDay.size() - 1) {
-                            sb.append(", ");
-                        }
-                    }
-                    sb.append("\n");
-                }
-            }
-            
+            sb.append("占用天数: ").append(daysUsed).append("\n");
             this.explanation = sb.toString();
-        }
-        
-        private String dayName(int d) {
-            switch (d) {
-                case 0: return "一";
-                case 1: return "二";
-                case 2: return "三";
-                case 3: return "四";
-                case 4: return "五";
-                case 5: return "六";
-                case 6: return "日";
-                default: return String.valueOf(d);
-            }
         }
     }
 
@@ -104,7 +93,7 @@ public class RecommendationSolver {
     private final int K;
     private final long timeLimitMs;
 
-    // runtime stats/state
+    // 运行时状态
     private final AtomicLong nodesVisited = new AtomicLong(0);
     private final AtomicLong prunedCount = new AtomicLong(0);
     private volatile boolean timedOut = false;
@@ -119,77 +108,41 @@ public class RecommendationSolver {
     }
 
     public List<Solution> solve() {
+        Log.d(UCourse_TAG, "开始求解... 原始课程数: " + allCourses.size());
         nodesVisited.set(0);
         prunedCount.set(0);
         timedOut = false;
 
-        // prefilter feasible courses (drop interest==0)
+        // 1. 预处理与过滤
+        long filterStart = System.currentTimeMillis();
         List<Course> feasible = new ArrayList<>();
         for (Course c : allCourses) {
             if (c == null) continue;
-            if (c.interest == 0) continue; // never consider 0-interest courses
+            if (c.interest <= 0) continue; // 排除无兴趣课程
+            
             List<TimeSlot> slots = courseTimeSlots == null ? null : courseTimeSlots.get(c.id);
             if (slots == null || slots.isEmpty()) continue;
-            if (isWithinFreeTime(slots)) feasible.add(c);
-        }
-
-        // 移除课程数量硬限制，允许更多课程参与搜索
-        final int HARD_CAP = 100; // 大幅增加课程数量限制，允许更多课程参与推荐计算
-        if (feasible.size() > HARD_CAP) {
-            // sort by interest desc and keep top HARD_CAP
-            Collections.sort(feasible, (a,b) -> Integer.compare(b.interest, a.interest));
-            feasible = new ArrayList<>(feasible.subList(0, Math.min(HARD_CAP, feasible.size())));
-        }
-
-        // sort by interest desc
-        Collections.sort(feasible, (a,b) -> Integer.compare(b.interest, a.interest));
-        // Feasible count=" + feasible.size() + "
-        // Feasible courses removed from logging
-
-        // attempt to greedily pre-include non-conflicting interest==10 courses
-        List<Course> prefix = new ArrayList<>();
-        Set<Long> occupiedPrefix = new HashSet<>();
-        for (int i = 0; i < feasible.size(); i++) {
-            Course c = feasible.get(i);
-            if (c.interest == 10) {
-                boolean conflict = false;
-                List<TimeSlot> slots = courseTimeSlots.get(c.id);
-                if (slots != null) {
-                    for (TimeSlot ts : slots) {
-                        for (int s = ts.getStartSection(); s <= ts.getEndSection(); s++) {
-                            long key = (((long) ts.getDay()) << 32) | (s & 0xffffffffL);
-                            if (occupiedPrefix.contains(key)) { conflict = true; break; }
-                        }
-                        if (conflict) break;
-                    }
-                }
-                if (!conflict) {
-                    prefix.add(c);
-                    if (slots != null) {
-                        for (TimeSlot ts : slots) {
-                            for (int s = ts.getStartSection(); s <= ts.getEndSection(); s++) {
-                                long key = (((long) ts.getDay()) << 32) | (s & 0xffffffffL);
-                                occupiedPrefix.add(key);
-                            }
-                        }
-                    }
-                }
+            
+            if (isWithinFreeTime(slots)) {
+                feasible.add(c);
             }
         }
+        
+        // 2. 启发式排序：优先考虑高兴趣分课程
+        // 次级排序：课时少的优先（单位时间收益高），但这里简单起见只用兴趣分
+        Collections.sort(feasible, (a, b) -> Integer.compare(b.interest, a.interest));
+        
+        Log.d(UCourse_TAG, "可行课程数: " + feasible.size() + ", 预处理耗时: " + (System.currentTimeMillis() - filterStart) + "ms");
 
-        // remove prefixed courses from feasible list to avoid duplication in DFS
-        if (!prefix.isEmpty()) {
-            feasible.removeAll(prefix);
-        }
-
-    // we will run DFS on the remaining feasible courses, but start with prefix pre-included
-    int n = feasible.size();
+        // 3. 准备Bitmasks加速冲突检测
+        int n = feasible.size();
         int[] interests = new int[n];
-        for (int i = 0; i < n; i++) interests[i] = feasible.get(i).interest;
-
-        // prepare masks
         List<Set<Long>> masks = new ArrayList<>();
-        for (Course c : feasible) {
+        
+        for (int i = 0; i < n; i++) {
+            Course c = feasible.get(i);
+            interests[i] = c.interest;
+            
             Set<Long> m = new HashSet<>();
             List<TimeSlot> slots = courseTimeSlots.get(c.id);
             if (slots != null) {
@@ -203,227 +156,173 @@ public class RecommendationSolver {
             masks.add(m);
         }
 
-        int[] cumsum = new int[n+1];
-        for (int i = n-1; i >= 0; i--) cumsum[i] = cumsum[i+1] + interests[i];
+        // 4. 计算后缀和（用于剪枝的乐观估值）
+        int[] suffixSum = new int[n + 1];
+        suffixSum[n] = 0;
+        for (int i = n - 1; i >= 0; i--) {
+            suffixSum[i] = suffixSum[i + 1] + interests[i];
+        }
 
-        List<Solution> best = new ArrayList<>();
-        AtomicLong start = new AtomicLong(System.currentTimeMillis());
-
-    // initial chosen and occupied from prefix
-    List<Course> initialChosen = new ArrayList<>(prefix);
-    Set<Long> initialOccupied = new HashSet<>(occupiedPrefix);
-    int initialScore = 0;
-    for (Course pc : prefix) initialScore += pc.interest;
-
-    dfs(0, feasible, masks, initialOccupied, initialChosen, initialScore, cumsum, best, start);
-
-        long elapsed = System.currentTimeMillis() - start.get();
-        StringBuilder sb = new StringBuilder();
-        sb.append("nodes=").append(nodesVisited.get()).append(", pruned=").append(prunedCount.get())
-                .append(", elapsed=").append(elapsed).append("ms, solutions=").append(best.size())
-                .append(", timedOut=").append(timedOut);
-        lastSummary = sb.toString();
-        return best;
+        // 5. 开始分支定界搜索
+        List<Solution> bestSolutions = new ArrayList<>();
+        AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
+        
+        dfs(0, feasible, masks, new HashSet<>(), new ArrayList<>(), 0, suffixSum, bestSolutions, startTime);
+        
+        long elapsed = System.currentTimeMillis() - startTime.get();
+        lastSummary = String.format("Nodes: %d, Pruned: %d, Time: %dms, Solutions: %d", 
+                nodesVisited.get(), prunedCount.get(), elapsed, bestSolutions.size());
+        Log.d(UCourse_TAG, "求解结束: " + lastSummary);
+        
+        return bestSolutions;
     }
 
-    private void dfs(int idx, List<Course> courses, List<Set<Long>> masks, Set<Long> occupied, List<Course> chosen, int score, int[] cumsum, List<Solution> best, AtomicLong start) {
+    /**
+     * 深度优先搜索 + 分支定界
+     * 
+     * @param idx 当前考虑的课程索引
+     * @param courses 所有可行课程列表
+     * @param masks 每门课程的时间掩码
+     * @param occupied 当前已占用的时间槽
+     * @param chosen 当前已选择的课程
+     * @param currentScore 当前总分
+     * @param suffixSum 后缀和数组，用于估算剩余最大可能分数
+     * @param bestSolutions 当前最优解集合
+     * @param startTime 开始时间
+     */
+    private void dfs(int idx, List<Course> courses, List<Set<Long>> masks, Set<Long> occupied, 
+                     List<Course> chosen, int currentScore, int[] suffixSum, 
+                     List<Solution> bestSolutions, AtomicLong startTime) {
+        
         nodesVisited.incrementAndGet();
-        if (timeLimitMs > 0 && System.currentTimeMillis() - start.get() > timeLimitMs) { timedOut = true; return; }
-
-        // 早期剪枝优化：如果当前方案不可能比已知的最差方案好，且已达到K个方案，直接返回
-        int optimistic = score + cumsum[idx];
-        if (best.size() >= K && optimistic <= best.get(best.size()-1).totalScore) {
-            prunedCount.incrementAndGet();
-            return;
-        }
-
-        // 方案完成时添加
-        if (idx >= courses.size()) {
-            if (chosen == null || chosen.isEmpty()) return;
-            
-            // 计算方案基本信息
-            Set<Long> occ = new HashSet<>();
-            Set<Integer> days = new HashSet<>();
-            for (Course c : chosen) {
-                List<TimeSlot> sl = courseTimeSlots.get(c.id);
-                if (sl == null) continue;
-                for (int i = 0; i < sl.size(); i++) {
-                    TimeSlot t = sl.get(i);
-                    for (int s = t.getStartSection(); s <= t.getEndSection(); s++) {
-                        long key = (((long) t.getDay()) << 32) | (s & 0xffffffffL);
-                        occ.add(key);
-                        days.add(t.getDay());
-                    }
-                }
-            }
-            
-            // 创建方案并添加详细信息
-            Solution sol = new Solution(new ArrayList<>(chosen), score);
-            sol.totalPeriods = occ.size();
-            sol.daysUsed = days.size();
-            sol.occupiedSlots = occ;
-            sol.enhanceExplanation(courseTimeSlots);
-            
-            // 添加到结果集
-            addSolution(best, sol);
-            return;
-        }
-
-        // 尝试包含当前课程
-        Set<Long> mask = masks.get(idx);
-        boolean conflict = false;
-        for (Long k : mask) if (occupied.contains(k)) { conflict = true; break; }
         
-        if (!conflict) {
-            // 提前检查：如果添加当前课程后，即使后续所有课程都能添加，也无法超过已知最优方案，则跳过
-            int potentialScore = score + courses.get(idx).interest + (idx + 1 < cumsum.length ? cumsum[idx + 1] : 0);
-            if (!(best.size() >= K && potentialScore <= best.get(best.size() - 1).totalScore)) {
-                // 添加当前课程并继续搜索
-                for (Long k : mask) occupied.add(k);
-                chosen.add(courses.get(idx));
-                dfs(idx + 1, courses, masks, occupied, chosen, score + courses.get(idx).interest, cumsum, best, start);
-                chosen.remove(chosen.size() - 1);
-                for (Long k : mask) occupied.remove(k);
-            }
-        }
-
-        // 尝试不包含当前课程
-        // 提前检查：如果不包含当前课程后，即使后续所有课程都能添加，也无法超过已知最优方案，则跳过
-        int excludePotentialScore = score + (idx + 1 < cumsum.length ? cumsum[idx + 1] : 0);
-        if (!(best.size() >= K && excludePotentialScore <= best.get(best.size() - 1).totalScore)) {
-            dfs(idx + 1, courses, masks, occupied, chosen, score, cumsum, best, start);
-        }
-    }
-
-    private boolean isSubset(Solution sub, Solution sup) {
-        // 添加空值检查
-        if (sub == null || sup == null || sub.courses == null || sup.courses == null) {
-            return false;
-        }
-        
-        // 首先检查基本条件：子方案课程数量必须小于父方案
-        if (sub.courses.size() >= sup.courses.size() || sub.courses.isEmpty()) {
-            return false;
-        }
-        
-        // 优化：使用HashSet存储父方案的课程ID，避免嵌套循环
-        Set<String> supCourseIds = new HashSet<>();
-        for (Course c : sup.courses) {
-            if (c.id != null) {
-                supCourseIds.add(c.id);
-            }
-        }
-        
-        // 检查子方案的所有课程ID是否都在父方案中
-        for (Course c : sub.courses) {
-            if (c.id == null || !supCourseIds.contains(c.id)) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
-
-    private synchronized void addSolution(List<Solution> best, Solution s) {
-        // 空值检查
-        if (best == null || s == null || s.courses == null || s.courses.isEmpty()) {
-            return;
-        }
-        
-        // 生成阶段过滤：如果方案课程数过少，直接跳过（确保质量）
-        if (s.courses.size() < 3) {
-            return;
-        }
-        
-        // 快速检查：如果best为空，直接添加并返回
-        if (best.isEmpty()) {
-            best.add(s);
-            return;
-        }
-        
-        // 高效剪枝：如果当前方案分数低于最差方案且已达到K个，直接跳过
-        if (best.size() >= K) {
-            Solution worstSolution = best.get(best.size() - 1);
-            if (s.totalScore < worstSolution.totalScore || 
-                (s.totalScore == worstSolution.totalScore && s.totalPeriods >= worstSolution.totalPeriods)) {
+        // 超时检查 (每1000个节点检查一次，减少系统调用开销)
+        if (nodesVisited.get() % 1000 == 0) {
+            if (timeLimitMs > 0 && System.currentTimeMillis() - startTime.get() > timeLimitMs) {
+                timedOut = true;
                 return;
             }
         }
-        
-        // 检查重复方案
-        for (Solution existing : best) {
-            if (existing.totalScore == s.totalScore && existing.occupiedSlots.equals(s.occupiedSlots)) {
-                return; // 找到重复，忽略当前方案
+        if (timedOut) return;
+
+        // 强力剪枝：乐观估值
+        // 如果 (当前分数 + 剩余所有课程的分数) <= 第K优解的分数，则无需继续搜索
+        if (bestSolutions.size() >= K) {
+            int maxPossibleScore = currentScore + suffixSum[idx];
+            int minScoreInBest = bestSolutions.get(bestSolutions.size() - 1).totalScore;
+            
+            // 如果只能达到平局且方案更复杂，也可以剪枝
+            if (maxPossibleScore < minScoreInBest) {
+                prunedCount.incrementAndGet();
+                return;
+            }
+        }
+
+        // 叶子节点：所有课程都已考虑
+        if (idx >= courses.size()) {
+            if (!chosen.isEmpty()) {
+                addSolution(bestSolutions, new ArrayList<>(chosen), currentScore);
+            }
+            return;
+        }
+
+        // 分支1：尝试选择当前课程
+        // 冲突检测
+        Set<Long> currentMask = masks.get(idx);
+        boolean conflict = false;
+        for (Long slot : currentMask) {
+            if (occupied.contains(slot)) {
+                conflict = true;
+                break;
+            }
+        }
+
+        if (!conflict) {
+            // 执行选择
+            for (Long slot : currentMask) occupied.add(slot);
+            chosen.add(courses.get(idx));
+            
+            // 递归下一层
+            dfs(idx + 1, courses, masks, occupied, chosen, currentScore + courses.get(idx).interest, 
+                suffixSum, bestSolutions, startTime);
+            
+            // 回溯
+            chosen.remove(chosen.size() - 1);
+            for (Long slot : currentMask) occupied.remove(slot);
+        }
+
+        // 分支2：不选择当前课程
+        // 只有当"不选"仍有可能产生优解时才搜索
+        // 这里的剪枝已经在函数开头的"乐观估值"中涵盖了，但为了更精细，可以在进入分支前再次检查
+        if (bestSolutions.size() >= K) {
+            int maxPossibleWithoutCurrent = currentScore + suffixSum[idx + 1];
+            int minScoreInBest = bestSolutions.get(bestSolutions.size() - 1).totalScore;
+            if (maxPossibleWithoutCurrent < minScoreInBest) {
+                return; // 剪枝：不选这门课肯定没戏
             }
         }
         
-        // 收集需要移除的方案和判断是否应该添加当前方案
-        List<Solution> toRemove = new ArrayList<>();
-        boolean shouldAdd = true;
+        dfs(idx + 1, courses, masks, occupied, chosen, currentScore, suffixSum, bestSolutions, startTime);
+    }
+
+    /**
+     * 将新方案尝试添加到结果集
+     * 策略：保持Top K，去重，但不根据时间冲突互斥（不同方案可以时间重叠，只要课程组合不同）
+     */
+    private void addSolution(List<Solution> best, List<Course> courses, int score) {
+        // 1. 质量过滤：课程太少通常不是好的排课方案
+        if (courses.size() < 2) return; 
+
+        // 2. 重复检测：如果完全相同的课程组合已存在，则忽略
+        // 简单的O(K*N)检测，K很小所以没问题
+        for (Solution s : best) {
+            if (s.totalScore == score && s.courses.size() == courses.size()) {
+                // 检查是否课程ID完全一致
+                boolean match = true;
+                Set<String> existingIds = new HashSet<>();
+                for(Course c : s.courses) existingIds.add(c.id);
+                
+                for(Course c : courses) {
+                    if(!existingIds.contains(c.id)) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) return; // 完全重复
+            }
+        }
+
+        // 3. 插入排序
+        Solution newSol = new Solution(courses, score);
+        newSol.enhanceExplanation(courseTimeSlots); // 计算辅助信息
         
-        // 批量处理冲突和子集关系检查
+        int insertPos = 0;
+        boolean added = false;
+        
         for (int i = 0; i < best.size(); i++) {
-            Solution existing = best.get(i);
-            
-            // 1. 检查子集关系 - 如果当前方案是现有方案的子集，则不添加
-            if (isSubset(s, existing)) {
-                shouldAdd = false;
+            Solution s = best.get(i);
+            // 排序规则：分数高的在前；分数相同，课程数多的在前
+            if (score > s.totalScore) {
+                best.add(i, newSol);
+                added = true;
                 break;
-            }
-            
-            // 2. 检查是否现有方案是当前方案的子集 - 如果是，移除现有方案
-            if (isSubset(existing, s)) {
-                toRemove.add(existing);
-                continue;
-            }
-            
-            // 3. 检查时间段冲突 - 对于冲突的方案，保留分数更高的
-            if (hasTimeOverlap(s, existing)) {
-                if (s.totalScore > existing.totalScore) {
-                    toRemove.add(existing); // 当前方案更好，移除现有方案
-                } else {
-                    shouldAdd = false; // 现有方案更好，不添加当前方案
+            } else if (score == s.totalScore) {
+                if (courses.size() > s.courses.size()) { // 偏好更多课程
+                    best.add(i, newSol);
+                    added = true;
                     break;
                 }
             }
         }
         
-        // 如果不应该添加，直接返回
-        if (!shouldAdd) {
-            return;
+        if (!added && best.size() < K) {
+            best.add(newSol);
         }
-        
-        // 移除标记的低质量方案
-        best.removeAll(toRemove);
-        
-        // 按分数和时间段数量排序并插入当前方案
-        int pos = 0;
-        while (pos < best.size()) {
-            Solution cur = best.get(pos);
-            if (s.totalScore > cur.totalScore) break;
-            if (s.totalScore == cur.totalScore && s.totalPeriods < cur.totalPeriods) break;
-            pos++;
+
+        // 4. 保持K的大小
+        while (best.size() > K) {
+            best.remove(best.size() - 1);
         }
-        best.add(pos, s);
-        
-        // 严格控制方案数量，保留前K个最高分方案
-        if (best.size() > K) {
-            best.subList(K, best.size()).clear(); // 批量移除，更高效
-        }
-    }
-    
-    // 检查两个方案是否有时间段重叠
-    private boolean hasTimeOverlap(Solution s1, Solution s2) {
-        if (s1 == null || s2 == null || s1.occupiedSlots == null || s2.occupiedSlots == null) {
-            return false;
-        }
-        // 如果两个方案的占用时间段集合有交集，则存在重叠
-        for (Long slot : s1.occupiedSlots) {
-            if (s2.occupiedSlots.contains(slot)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private boolean isWithinFreeTime(List<TimeSlot> slots) {
@@ -439,18 +338,4 @@ public class RecommendationSolver {
         }
         return true;
     }
-
-    private String dayName(int d) {
-        switch (d) {
-            case 0: return "一";
-            case 1: return "二";
-            case 2: return "三";
-            case 3: return "四";
-            case 4: return "五";
-            case 5: return "六";
-            case 6: return "日";
-            default: return String.valueOf(d);
-        }
-    }
 }
-

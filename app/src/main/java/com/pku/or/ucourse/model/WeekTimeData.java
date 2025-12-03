@@ -77,6 +77,15 @@ public class WeekTimeData implements Serializable {
     }
 
     /**
+     * 移除指定日期的所有时间段数据
+     */
+    public void removeDataForDate(Date date) {
+        if (date == null) return;
+        String dateKey = getDateKey(date);
+        dateTimeData.remove(dateKey);
+    }
+
+    /**
      * 设置当前 WeekTimeData 所对应的一周的起始日期（周一）。
      */
     public void setWeekStartDate(Date startDate) {

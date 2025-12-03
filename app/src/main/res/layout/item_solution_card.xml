@@ -52,7 +52,7 @@
             android:id="@+id/rv_segments"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxHeight="300dp"
+            android:maxHeight="800dp"
             android:orientation="horizontal"
             android:clipToPadding="false"
             android:minHeight="60dp" />

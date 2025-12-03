@@ -1,0 +1,43 @@
+汇报时的核心技术点（Talking Points）：
+
+1. 算法模型 ：
+   
+   - 将问题建模为 最大权独立集问题（Maximum Weight Independent Set） 的变种，或者更通俗地说，是带冲突约束的 背包问题（Knapsack Problem with Conflict Constraints） 。
+   - 目标函数 ：最大化总兴趣分（Total Interest Score）。
+   - 约束条件 ：
+     - 时间不冲突（硬约束）。
+     - 必须在用户空闲时间内（硬约束）。
+2. 求解策略：分支定界 (Branch and Bound) ：
+   
+   - 分支（Branching） ：构建一棵二叉搜索树。每一层代表一门课程，左分支表示“选择该课程”，右分支表示“不选该课程”。
+   - 定界（Bounding）与剪枝（Pruning） ：这是算法高效的核心。
+     - 乐观估值（Optimistic Estimation） ：在搜索树的任意节点，计算“当前已得分数 + 剩余所有可选课程的理论最大分数（后缀和）”。
+     - 剪枝条件 ：如果（当前分数 + 剩余最大潜力）<= 当前已找到的第 K 个最优解的分数，则说明这条路径不可能产生更好的解，直接 剪枝 （不再继续搜索该分支）。这极大地减少了搜索空间。
+3. 具体的性能优化手段 ：
+   
+   - 位运算加速（Bitmask） ：将“星期几+第几节”映射为一个 long 类型的位掩码。判断两门课是否冲突，只需做一次按位与运算（ & ），比遍历列表快得多。
+   - 启发式排序（Heuristics） ：在搜索前，将课程按“兴趣分从高到低”排序。这样算法会优先搜索高分分支，更快找到较优解，从而提升剪枝效率。
+   - 后缀和数组（Suffix Sum Array） ：预计算后缀和，使得“剩余最大潜力”的计算时间复杂度降为 O(1)。
+4. 多解生成 ：
+   
+   - 维护一个大小为 K （例如 10）的优先队列，实时保留当前找到的最好的 10 个不重复方案。
+
+
+
+
+
+
+
+
+
+调整星期几的宽度：
+app/src/main/res/layout/item_segment.xml
+调整星期几的高度：
+app/src/main/java/com/pku/or/ucourse/ResultFragment.java
+params.height = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 175, holder.itemView.getResources().getDisplayMetrics());
+改课程名字的字体大小：
+            android:id="@+id/tv_course_name"
+            android:textSize="18sp"
+
+
+

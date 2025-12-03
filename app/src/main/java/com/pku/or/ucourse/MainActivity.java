@@ -3,6 +3,8 @@ package com.pku.or.ucourse;
 import android.os.Bundle;
 import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.pku.or.ucourse.utils.PerformanceLogger;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
@@ -29,6 +31,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 使用统一的性能日志工具
+        PerformanceLogger.logLifecycleEvent("UCourse_MAIN", "CREATED");
+        
         setContentView(R.layout.activity_main);
 
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
@@ -97,6 +102,9 @@ public class MainActivity extends AppCompatActivity {
         if (targetFragment == activeFragment) {
             return; // 如果点击的是当前Fragment，则不执行任何操作
         }
+        
+        // 使用统一的性能日志工具记录Fragment切换
+        PerformanceLogger.logPerformancePoint("FRAGMENT_SWITCH", "切换到Fragment: " + targetFragment.getClass().getSimpleName());
 
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.hide(activeFragment);

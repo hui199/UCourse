@@ -1008,12 +1008,17 @@ public class TimeTableView extends View {
      * 更新当前周的空闲时间数据
      */
     private void updateWeekData() {
-        currentWeekData.clear();
+        // currentWeekData.clear(); // FIX: Do not clear all data, only update current view's dates
         // record the current week's start date (normalized to headerDates[0] which is Monday)
         if (headerDates != null && headerDates[0] != null) {
             currentWeekData.setWeekStartDate(headerDates[0]);
         }
         for (int day = 0; day < COLUMN_COUNT; day++) {
+            // Remove old data for this date to avoid duplication/stale data
+            if (headerDates[day] != null) {
+                currentWeekData.removeDataForDate(headerDates[day]);
+            }
+            
             List<TimeSlot> daySlots = timeSlotsMap.get(day);
             if (daySlots != null) {
                 for (TimeSlot slot : daySlots) {
