@@ -36,6 +36,9 @@ public class MainActivity extends AppCompatActivity {
         
         setContentView(R.layout.activity_main);
 
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
         fragmentManager = getSupportFragmentManager();
 
@@ -85,10 +88,13 @@ public class MainActivity extends AppCompatActivity {
         // 确保底部导航的初始高亮与当前显示的Fragment一致
         if (activeFragment == homeFragment) {
             bottomNavigationView.setSelectedItemId(R.id.navigation_home);
+            if (getSupportActionBar() != null) getSupportActionBar().setTitle("课程选择");
         } else if (activeFragment == timeFragment) {
             bottomNavigationView.setSelectedItemId(R.id.navigation_time);
+            if (getSupportActionBar() != null) getSupportActionBar().setTitle("时间设置");
         } else {
             bottomNavigationView.setSelectedItemId(R.id.navigation_result);
+            if (getSupportActionBar() != null) getSupportActionBar().setTitle("推荐方案");
         }
     }
     
@@ -101,6 +107,16 @@ public class MainActivity extends AppCompatActivity {
     private void switchFragment(Fragment targetFragment) {
         if (targetFragment == activeFragment) {
             return; // 如果点击的是当前Fragment，则不执行任何操作
+        }
+        
+        if (getSupportActionBar() != null) {
+            if (targetFragment instanceof com.pku.or.ucourse.home.HomeFragment) {
+                getSupportActionBar().setTitle("课程选择");
+            } else if (targetFragment instanceof TimeFragment) {
+                getSupportActionBar().setTitle("时间设置");
+            } else if (targetFragment instanceof ResultFragment) {
+                getSupportActionBar().setTitle("推荐方案");
+            }
         }
         
         // 使用统一的性能日志工具记录Fragment切换

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 10分课程的特殊背景 - 带有底部发光效果 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 0: 底部发光层 (模拟阴影/发光) -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FFD54F" /> <!-- 亮黄色/金色发光 -->
+            <corners android:radius="18dp" /> 
+        </shape>
+    </item>
+    
+    <!-- 1: 主背景层 (白色，内缩以露出底部的发光层) -->
+    <item android:left="2dp" android:top="2dp" android:right="2dp" android:bottom="4dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/background_color" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+
+    <!-- 2: 进度条层 (ClipDrawable，与主背景层重合) -->
+    <item android:left="2dp" android:top="2dp" android:right="2dp" android:bottom="4dp">
+        <clip
+            android:drawable="@drawable/bg_fill_gradient"
+            android:clipOrientation="horizontal"
+            android:gravity="left" />
+    </item>
+</layer-list>

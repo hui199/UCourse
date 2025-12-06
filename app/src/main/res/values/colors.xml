@@ -11,6 +11,7 @@
     <color name="sheet_group_bg_even">#F5F5F5</color>
     <color name="sheet_group_bg_odd">#FFFFFF</color>
     <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
     <color name="gray_700">#424242</color>
     <color name="sheet_row_bg">#F5F5F5</color>
     
@@ -48,7 +49,7 @@
     <color name="time_slot_stroke_color">#BDBDBD</color>
     <color name="header_text_color">#212121</color>
     <color name="grid_line_color">#EEEEEE</color>
-    <color name="time_slot_color">#E8EAF6</color>
+    <color name="time_slot_color">#4CAF50</color>
     <color name="primaryColor">#3F51B5</color>
     <color name="side_bar_text_color">#757575</color>
     <color name="gray_600">#757575</color>

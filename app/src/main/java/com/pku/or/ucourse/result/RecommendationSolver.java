@@ -270,25 +270,42 @@ public class RecommendationSolver {
      * 策略：保持Top K，去重，但不根据时间冲突互斥（不同方案可以时间重叠，只要课程组合不同）
      */
     private void addSolution(List<Solution> best, List<Course> courses, int score) {
-        // 1. 质量过滤：课程太少通常不是好的排课方案
-        if (courses.size() < 2) return; 
+        // 1. 质量过滤：允许单门课程的推荐
+        // if (courses.size() < 1) return; 
 
-        // 2. 重复检测：如果完全相同的课程组合已存在，则忽略
-        // 简单的O(K*N)检测，K很小所以没问题
-        for (Solution s : best) {
+        // 2. 重复检测与子集检测
+        Set<String> newIds = new HashSet<>();
+        for(Course c : courses) newIds.add(c.id);
+
+        java.util.Iterator<Solution> it = best.iterator();
+        while (it.hasNext()) {
+            Solution s = it.next();
+            Set<String> existingIds = new HashSet<>();
+            for(Course c : s.courses) existingIds.add(c.id);
+
+            // 2.1 完全重复检测与相似度压缩
             if (s.totalScore == score && s.courses.size() == courses.size()) {
-                // 检查是否课程ID完全一致
-                boolean match = true;
-                Set<String> existingIds = new HashSet<>();
-                for(Course c : s.courses) existingIds.add(c.id);
-                
-                for(Course c : courses) {
-                    if(!existingIds.contains(c.id)) {
-                        match = false;
-                        break;
-                    }
+                if (existingIds.containsAll(newIds)) return; // Totally same
+
+                // 相似度压缩：如果两个方案分数相同，且只有1门课程不同，则视为冗余方案
+                int overlap = 0;
+                for (Course c : courses) {
+                    if (existingIds.contains(c.id)) overlap++;
                 }
-                if (match) return; // 完全重复
+                if (overlap >= courses.size() - 1) {
+                     return; // 丢弃高度相似的同分方案
+                }
+            }
+
+            // 2.2 子集检测 (Subset Pruning)
+            // 如果新方案是现有方案的子集 (New < Existing)，则丢弃新方案
+            if (existingIds.containsAll(newIds)) {
+                return; // New is subset of Existing -> Reject New
+            }
+
+            // 如果现有方案是新方案的子集 (Existing < New)，则移除现有方案
+            if (newIds.containsAll(existingIds)) {
+                it.remove(); // Existing is subset of New -> Remove Existing
             }
         }
 
@@ -326,9 +343,14 @@ public class RecommendationSolver {
     }
 
     private boolean isWithinFreeTime(List<TimeSlot> slots) {
-        if (freeTimes == null) return false;
+        // 如果用户没有设置空闲时间，默认所有时间都可用
+        if (freeTimes == null) return true;
         for (TimeSlot ts : slots) {
             List<WeekTimeData.TimeRange> ranges = freeTimes.getDateTimeRangesByDayIndex(ts.getDay());
+            // 如果某天没有设置空闲时间，且用户有设置其他天的空闲时间，说明这天不空闲？
+            // 通常WeekTimeData如果为空说明全天不空闲（只有选中的才是空闲）
+            // 但如果用户完全没用过TimeFragment，freeTimes可能是空的或者全空的。
+            // 这里假设WeekTimeData包含用户明确标记的"空闲"时间段。
             if (ranges == null || ranges.isEmpty()) return false;
             boolean ok = false;
             for (WeekTimeData.TimeRange r : ranges) {

@@ -3,5 +3,5 @@
     <!-- 圆角设置 -->
     <corners android:radius="8dp" />
     <!-- 纯色背景 -->
-    <solid android:color="#FF7675" />
+    <solid android:color="#EF9A9A" /> <!-- 更柔和的浅红色 -->
 </shape>

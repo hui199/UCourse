@@ -19,9 +19,9 @@ import com.pku.or.ucourse.R;
 
 public class ColumnMapDialogFragment extends DialogFragment {
     public static class MappingResult {
-        public int titleIdx, timeIdx, teacherIdx, unitIdx;
+        public int titleIdx, timeIdx, teacherIdx, unitIdx, locationIdx;
         public boolean applyToAll;
-        public MappingResult(int t, int ti, int te, int u, boolean a) { titleIdx=t; timeIdx=ti; teacherIdx=te; unitIdx=u; applyToAll=a; }
+        public MappingResult(int t, int ti, int te, int u, int l, boolean a) { titleIdx=t; timeIdx=ti; teacherIdx=te; unitIdx=u; locationIdx=l; applyToAll=a; }
     }
 
     public interface Listener { void onMapping(MappingResult result); void onUsePrevious(); }
@@ -43,6 +43,7 @@ public class ColumnMapDialogFragment extends DialogFragment {
         Spinner spTime = v.findViewById(R.id.sp_time);
         Spinner spTeacher = v.findViewById(R.id.sp_teacher);
         Spinner spUnit = v.findViewById(R.id.sp_unit);
+        Spinner spLocation = v.findViewById(R.id.sp_location);
         android.widget.CheckBox cbApplyAll = v.findViewById(R.id.cb_apply_all);
         Button btnUsePrev = v.findViewById(R.id.btn_use_prev);
 
@@ -52,6 +53,7 @@ public class ColumnMapDialogFragment extends DialogFragment {
         spTime.setAdapter(adapter);
         spTeacher.setAdapter(adapter);
         spUnit.setAdapter(adapter);
+        spLocation.setAdapter(adapter);
 
         // apply prefill selections if provided
         try {
@@ -60,8 +62,9 @@ public class ColumnMapDialogFragment extends DialogFragment {
                 if (prefill.timeIdx >= 0 && prefill.timeIdx < headers.size()) spTime.setSelection(prefill.timeIdx);
                 if (prefill.teacherIdx >= 0 && prefill.teacherIdx < headers.size()) spTeacher.setSelection(prefill.teacherIdx);
                 if (prefill.unitIdx >= 0 && prefill.unitIdx < headers.size()) spUnit.setSelection(prefill.unitIdx);
+                if (prefill.locationIdx >= 0 && prefill.locationIdx < headers.size()) spLocation.setSelection(prefill.locationIdx);
             }
-    } catch (Exception ex) { /* suppressed in production */ }
+        } catch (Exception ex) { /* suppressed in production */ }
 
         AlertDialog.Builder b = new AlertDialog.Builder(getContext()).setView(v).setTitle("列映射");
         AlertDialog dlg = b.create();
@@ -74,13 +77,8 @@ public class ColumnMapDialogFragment extends DialogFragment {
                 int ti = spTime.getSelectedItemPosition();
                 int te = spTeacher.getSelectedItemPosition();
                 int u = spUnit.getSelectedItemPosition();
-                MappingResult r = new MappingResult(t, ti, te, u, cbApplyAll.isChecked());
-                // also log the selected spinner item strings to confirm what the user saw
-                Object titleItem = spTitle.getSelectedItem();
-                Object timeItem = spTime.getSelectedItem();
-                Object teacherItem = spTeacher.getSelectedItem();
-                Object unitItem = spUnit.getSelectedItem();
-                // mapping selection confirmed
+                int l = spLocation.getSelectedItemPosition();
+                MappingResult r = new MappingResult(t, ti, te, u, l, cbApplyAll.isChecked());
                 listener.onMapping(r);
             }
             dlg.dismiss();

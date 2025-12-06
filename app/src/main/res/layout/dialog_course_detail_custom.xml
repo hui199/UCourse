@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/bg_dialog">
+
+    <TextView
+        android:id="@+id/tv_dialog_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/header_text_color"
+        android:layout_marginBottom="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        
+        <!-- Teacher -->
+        <LinearLayout
+            android:id="@+id/container_teacher"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="教师"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tv_dialog_teacher"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/header_text_color" />
+        </LinearLayout>
+
+        <!-- Time & Date Range -->
+        <LinearLayout
+            android:id="@+id/container_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="时间"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tv_dialog_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/header_text_color" />
+            <!-- Date Range (First/Last class) -->
+            <TextView
+                android:id="@+id/tv_dialog_date_range"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="4dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Location -->
+        <LinearLayout
+            android:id="@+id/container_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="地点"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tv_dialog_location"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/header_text_color" />
+        </LinearLayout>
+
+        <!-- Unit -->
+        <LinearLayout
+            android:id="@+id/container_unit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="开课单位"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tv_dialog_unit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/header_text_color" />
+        </LinearLayout>
+
+        <!-- Credits -->
+        <LinearLayout
+            android:id="@+id/container_credits"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="学分"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tv_dialog_credits"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/header_text_color" />
+        </LinearLayout>
+
+        <!-- Hours -->
+        <LinearLayout
+            android:id="@+id/container_hours"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="学时"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tv_dialog_hours"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/header_text_color" />
+        </LinearLayout>
+
+        <!-- Type -->
+        <LinearLayout
+            android:id="@+id/container_type"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="类型"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tv_dialog_type"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/header_text_color" />
+        </LinearLayout>
+        
+        <!-- Interest -->
+        <LinearLayout
+            android:id="@+id/container_interest"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:text="兴趣评分"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tv_dialog_interest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="@color/header_text_color" />
+        </LinearLayout>
+        
+    </LinearLayout>
+
+</LinearLayout>

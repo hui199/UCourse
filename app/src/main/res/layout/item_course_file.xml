@@ -67,6 +67,20 @@
                 android:text="文件"
                 android:textColor="@color/side_bar_text_color" />
         </LinearLayout>
+
+        <!-- 文件平均分显示（滑动批量调整时可见） -->
+        <TextView
+            android:id="@+id/tv_interest_score"
+            android:layout_width="32dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:gravity="end"
+            android:text="5"
+            android:textSize="16sp"
+            android:textColor="@color/header_text_color"
+            android:textStyle="bold"
+            android:layout_marginStart="12dp"
+            android:visibility="gone" />
         
         <!-- 隐藏的accent view，保持兼容性 -->
         <View

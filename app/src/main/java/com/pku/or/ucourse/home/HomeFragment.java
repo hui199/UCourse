@@ -14,6 +14,12 @@ import android.widget.TextView;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.ClipDrawable;
+import android.app.DatePickerDialog;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
+import java.util.Calendar;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -42,6 +48,9 @@ import java.util.HashMap;
 import android.database.Cursor;
 import android.provider.OpenableColumns;
 
+import com.pku.or.ucourse.CourseDetailFragment;
+import com.pku.or.ucourse.home.MenuDialogFragment;
+
 /**
  * 主页Fragment - 负责课程导入、展示和评分管理
  * 核心功能：
@@ -58,6 +67,10 @@ public class HomeFragment extends Fragment {
     private RecyclerView rv;
     // 课程适配器：负责渲染课程列表
     private CourseAdapter adapter;
+    // 设置开学日期按钮
+    private Button btnSetStartDate;
+    private static final String PREF_NAME = "ucourse_prefs";
+    private static final String KEY_FIRST_WEEK_DATE = "first_week_date";
 
     // 文件选择器启动器：用于选择Excel/CSV文件
     private ActivityResultLauncher<Intent> openFileLauncher;
@@ -124,11 +137,16 @@ public class HomeFragment extends Fragment {
         
         // 初始化UI组件
         Button btn = v.findViewById(R.id.btn_import);
+        btnSetStartDate = v.findViewById(R.id.btn_set_start_date);
         tvStatus = v.findViewById(R.id.tv_status);
         rv = v.findViewById(R.id.rv_courses);
         rv.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new CourseAdapter(new ArrayList<>());
         rv.setAdapter(adapter);
+
+        // 设置开学日期按钮点击事件
+        btnSetStartDate.setOnClickListener(view -> showSetDateDialog());
+        checkFirstWeekDateState();
         
         // 禁用RecyclerView动画以避免滑动评分时的视觉跳动
         androidx.recyclerview.widget.DefaultItemAnimator animator = new androidx.recyclerview.widget.DefaultItemAnimator();
@@ -184,10 +202,15 @@ public class HomeFragment extends Fragment {
             }
 
             // 弹出操作菜单：删除、重新映射、取消
-            android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(getContext());
-            b.setTitle("操作: " + title);
-            b.setItems(new String[]{"删除", "重新映射", "取消"}, (dialog, which) -> {
-                if (which == 0) {
+            // Request 8: Beautify pop-ups using MenuDialogFragment
+            List<String> options = new ArrayList<>();
+            options.add("删除");
+            options.add("重新映射");
+            options.add("取消");
+            
+            MenuDialogFragment menu = MenuDialogFragment.newInstance("操作: " + title, options);
+            menu.setOnOptionClickListener((pos, option) -> {
+                if (pos == 0) { // 删除
                     // 删除操作：弹出确认对话框
                     android.app.AlertDialog.Builder c = new android.app.AlertDialog.Builder(getContext());
                     c.setTitle("确认删除");
@@ -195,13 +218,15 @@ public class HomeFragment extends Fragment {
                     c.setPositiveButton("删除", (dd, ww) -> performDeleteTitle(type, id));
                     c.setNegativeButton("取消", null);
                     c.show();
-                } else if (which == 1) {
-                    // 重新映射操作
-                    performRemapTitle(type, id);
+                } else if (pos == 1) { // 重新映射
+                     performRemapTitle(type, id);
                 }
             });
-            b.show();
+            menu.show(getParentFragmentManager(), "menu_dialog");
         });
+
+        // 设置课程点击监听器：显示详情
+        adapter.setOnCourseClickListener(this::showCourseDetail);
 
         /**
          * 导入按钮点击事件：打开文件选择器
@@ -313,28 +338,45 @@ public class HomeFragment extends Fragment {
                             float deltaX = e.getX() - startX;
                             float scoreChangeFloat = deltaX / pixelsPerScore; // 可能为负
                             float newScoreFloat = Math.max(0, Math.min(10, startScore + scoreChangeFloat));
+                            
+                            // 实时更新Item样式（背景、文字颜色等），确保拖动过程中0分变灰/10分发光即时生效
+                            if (adapter != null) {
+                                int currentScoreInt = Math.round(newScoreFloat);
+                                int type = adapter.getTypeForPosition(currentViewHolder.getAdapterPosition());
+                                
+                                if (type == 2) { // Course
+                                    // Update the course itself
+                                    adapter.updateItemStyle(currentViewHolder, currentScoreInt, type);
+                                    // Update its parent headers (Sheet/File) based on hypothetical score
+                                    adapter.updateParentHeaderForCourseDrag(rv, currentItemId, newScoreFloat);
+                                } else { // Sheet or File
+                                    // Update the header itself (based on children + delta)
+                                    adapter.updateHeaderStyleForDrag(rv, currentViewHolder, scoreChangeFloat);
+                                }
+                            }
+
                             // 更新视觉反馈（进度条动画）为绝对分数，保持现有行为
                             updateSwipeVisualFloat(currentViewHolder, newScoreFloat);
 
-                            // 对于Sheet类型，右侧应显示增量（+n / -n）而不是绝对分数
+                            // 对于Sheet或File类型，右侧应显示增量（+n / -n）而不是绝对分数
                             try {
                                 int pos = currentViewHolder.getAdapterPosition();
                                 if (pos != RecyclerView.NO_POSITION && adapter != null) {
                                     int itType = adapter.getTypeForPosition(pos);
                                     android.widget.TextView tvScore = currentViewHolder.itemView.findViewById(R.id.tv_interest_score);
-                                    if (tvScore != null && itType == 1) { // Sheet
+                                    if (tvScore != null && (itType == 1 || itType == 0)) { // Sheet or File
                                         int deltaDisplay = Math.round(scoreChangeFloat);
                                         String s = (deltaDisplay > 0 ? ("+" + deltaDisplay) : String.valueOf(deltaDisplay));
                                         tvScore.setText(s);
                                         tvScore.setVisibility(View.VISIBLE);
-                                        // hide the sheet count while delta is visible to avoid layout shift
+                                        // hide the count while delta is visible to avoid layout shift
                                         android.widget.TextView tvCount = currentViewHolder.itemView.findViewById(R.id.tv_count);
                                         if (tvCount != null) tvCount.setVisibility(View.GONE);
                                     }
                                 }
                             } catch (Throwable _t) {}
 
-                            // 如果是Sheet，实时更新可见课程的进度条（按各自原始分数 + scoreChangeFloat）
+                            // 如果是Sheet或File，实时更新可见课程的进度条（按各自原始分数 + scoreChangeFloat）
                             try {
                                 int pos = currentViewHolder.getAdapterPosition();
                                 if (pos != RecyclerView.NO_POSITION && adapter != null) {
@@ -342,6 +384,8 @@ public class HomeFragment extends Fragment {
                                     if (itType == 1) {
                                         // rv可见范围内的course项更新
                                         updateVisibleCoursesForSheet(rv, currentItemId, scoreChangeFloat);
+                                    } else if (itType == 0) {
+                                        updateVisibleCoursesForFile(rv, currentItemId, scoreChangeFloat);
                                     }
                                 }
                             } catch (Throwable _t) {}
@@ -379,11 +423,11 @@ public class HomeFragment extends Fragment {
                                     }
                                 }
                                 if (tvScore != null) {
-                                    // 对于Sheet显示增量，对单一课程显示最终分数
+                                    // 对于Sheet/File显示增量，对单一课程显示最终分数
                                     int pos = currentViewHolder.getAdapterPosition();
                                     if (pos != RecyclerView.NO_POSITION && adapter != null) {
                                         int itType = adapter.getTypeForPosition(pos);
-                                        if (itType == 1) {
+                                        if (itType == 1 || itType == 0) { // Sheet or File
                                             String s = (scoreChange > 0 ? ("+" + scoreChange) : String.valueOf(scoreChange));
                                             tvScore.setText(s);
                                             tvScore.setVisibility(View.VISIBLE);
@@ -493,6 +537,9 @@ public class HomeFragment extends Fragment {
 
         vm.save(remaining);
 
+        // 导入完成后，检查是否需要提示设置开学日期
+        checkFirstWeekDateState();
+
         // 确保新导入的文件默认折叠（提高用户体验）
         if (!toAdd.isEmpty() && adapter != null) {
             Set<String> newFiles = new HashSet<>();
@@ -522,51 +569,155 @@ public class HomeFragment extends Fragment {
                 if (vh == null) continue;
                 int pos = vh.getAdapterPosition();
                 if (pos == RecyclerView.NO_POSITION) continue;
+                
                 int t = adapter.getTypeForPosition(pos);
-                if (t != 2) continue; // 只处理课程项
-                // 检查课程是否属于该Sheet
+                String id = adapter.getIdForPosition(pos);
                 String parent = adapter.getParentIdForPosition(pos);
-                if (parent == null) continue;
-                if (!parent.equals(sheetId)) continue;
-
-                // 基于课程原始分数计算临时显示分数
-                Course c = null;
-                try {
-                    // adapter的display并非公开，我们查询vm中的课程
-                    List<Course> cur = vm.courses.getValue();
-                    if (cur != null) {
-                        for (Course cc : cur) {
-                            if (cc != null && cc.id != null && cc.id.equals(adapter.getIdForPosition(pos))) { c = cc; break; }
-                        }
-                    }
-                } catch (Throwable _t) { }
-                int base = c == null ? 5 : Math.max(0, Math.min(10, c.interest));
-                float fv = base + deltaFloat;
-                int display = Math.max(0, Math.min(10, Math.round(fv)));
-
-                // 更新该item的进度条和分数字段
-                View rootCard = child.findViewById(R.id.root_card);
-                TextView tvScore = child.findViewById(R.id.tv_interest_score);
-                if (tvScore != null) {
-                    tvScore.setText(String.valueOf(display));
-                    tvScore.setVisibility(View.VISIBLE);
-                }
-                if (rootCard != null) {
-                    Drawable background = rootCard.getBackground();
-                    if (background instanceof LayerDrawable) {
-                        LayerDrawable layerDrawable = (LayerDrawable) background;
-                        if (layerDrawable.getNumberOfLayers() > 1) {
-                            Drawable fillLayer = layerDrawable.getDrawable(1);
-                            if (fillLayer instanceof ClipDrawable) {
-                                ClipDrawable cd = (ClipDrawable) fillLayer;
-                                cd.setLevel(display * 1000);
-                                rootCard.invalidate();
+                
+                // 检查是否为目标Sheet的头部
+                boolean isSheetHeader = (t == 1 && id != null && id.equals(sheetId));
+                // 检查是否为目标Sheet下的课程
+                boolean isChildCourse = (t == 2 && parent != null && parent.equals(sheetId));
+                
+                if (isSheetHeader) {
+                    // 更新Sheet头部样式
+                    adapter.updateHeaderStyleForDrag(rv, vh, deltaFloat);
+                } else if (isChildCourse) {
+                    // 更新课程样式
+                    Course c = null;
+                    try {
+                        List<Course> cur = vm.courses.getValue();
+                        if (cur != null) {
+                            for (Course cc : cur) {
+                                if (cc != null && cc.id != null && cc.id.equals(id)) { c = cc; break; }
                             }
                         }
-                    }
+                    } catch (Throwable _t) { }
+                    int base = c == null ? 5 : Math.max(0, Math.min(10, c.interest));
+                    float fv = base + deltaFloat;
+                    int display = Math.max(0, Math.min(10, Math.round(fv)));
+
+                    adapter.updateItemStyle(vh, display, 2);
                 }
             }
         } catch (Throwable _t) {}
+    }
+
+    // 在滑动File时实时更新RecyclerView中可见的课程项的进度条
+    private void updateVisibleCoursesForFile(RecyclerView rv, String fileId, float deltaFloat) {
+        if (rv == null || fileId == null || adapter == null) return;
+        try {
+            int childCount = rv.getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                View child = rv.getChildAt(i);
+                if (child == null) continue;
+                RecyclerView.ViewHolder vh = rv.getChildViewHolder(child);
+                if (vh == null) continue;
+                int pos = vh.getAdapterPosition();
+                if (pos == RecyclerView.NO_POSITION) continue;
+                
+                int t = adapter.getTypeForPosition(pos);
+                String id = adapter.getIdForPosition(pos);
+                String parent = adapter.getParentIdForPosition(pos);
+                
+                // 检查是否为目标File头部
+                boolean isFileHeader = (t == 0 && id != null && id.equals(fileId));
+                // 检查是否为目标File下的Sheet头部
+                boolean isSheetHeader = (t == 1 && parent != null && parent.equals(fileId));
+                // 检查是否为目标File下的课程 (parent is sheetId = fileId|sheetName)
+                boolean isChildCourse = (t == 2 && parent != null && parent.startsWith(fileId + "|"));
+                
+                if (isFileHeader || isSheetHeader) {
+                    // 更新File或Sheet头部样式
+                    adapter.updateHeaderStyleForDrag(rv, vh, deltaFloat);
+                } else if (isChildCourse) {
+                    // 更新课程样式
+                    Course c = null;
+                    try {
+                        List<Course> cur = vm.courses.getValue();
+                        if (cur != null) {
+                            for (Course cc : cur) {
+                                if (cc != null && cc.id != null && cc.id.equals(id)) { c = cc; break; }
+                            }
+                        }
+                    } catch (Throwable _t) { }
+                    int base = c == null ? 5 : Math.max(0, Math.min(10, c.interest));
+                    float fv = base + deltaFloat;
+                    int display = Math.max(0, Math.min(10, Math.round(fv)));
+
+                    adapter.updateItemStyle(vh, display, 2);
+                }
+            }
+        } catch (Throwable _t) {}
+    }
+
+    private void checkFirstWeekDateState() {
+        if (btnSetStartDate == null || getContext() == null) return;
+        SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String date = prefs.getString(KEY_FIRST_WEEK_DATE, null);
+        if (date == null) {
+            // Not set: Visual cue (Red icon tint)
+            Drawable[] drawables = btnSetStartDate.getCompoundDrawables();
+            if (drawables[0] != null) {
+                drawables[0].setColorFilter(Color.RED, PorterDuff.Mode.SRC_IN);
+            }
+        } else {
+            // Set: Remove visual cue (Default tint)
+            Drawable[] drawables = btnSetStartDate.getCompoundDrawables();
+            if (drawables[0] != null) {
+                drawables[0].clearColorFilter();
+            }
+        }
+    }
+
+    private void showSetDateDialog() {
+        if (getContext() == null) return;
+        Calendar c = Calendar.getInstance();
+        SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String saved = prefs.getString(KEY_FIRST_WEEK_DATE, null);
+        
+        if (saved != null) {
+            try {
+                String[] parts = saved.split("-");
+                if (parts.length == 3) {
+                    c.set(Calendar.YEAR, Integer.parseInt(parts[0]));
+                    c.set(Calendar.MONTH, Integer.parseInt(parts[1]) - 1);
+                    c.set(Calendar.DAY_OF_MONTH, Integer.parseInt(parts[2]));
+                }
+            } catch (Exception e) {}
+        } else {
+            // Default logic
+            c = getDefaultFirstWeekDate();
+        }
+
+        new DatePickerDialog(getContext(), (view, year, month, dayOfMonth) -> {
+            String dateStr = String.format(Locale.ROOT, "%04d-%02d-%02d", year, month + 1, dayOfMonth);
+            prefs.edit().putString(KEY_FIRST_WEEK_DATE, dateStr).apply();
+            checkFirstWeekDateState();
+        }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private Calendar getDefaultFirstWeekDate() {
+        Calendar now = Calendar.getInstance();
+        int year = now.get(Calendar.YEAR);
+        int month = now.get(Calendar.MONTH); // 0-11
+        
+        Calendar target = Calendar.getInstance();
+        target.clear();
+        
+        if (month >= 8 || month <= 1) { // Sep(8) to Feb(1) -> Fall Semester (Sep 1st)
+            int targetYear = (month <= 1) ? year - 1 : year;
+            target.set(targetYear, Calendar.SEPTEMBER, 1);
+        } else { // Mar(2) to Aug(7) -> Spring Semester (Mar 1st)
+            target.set(year, Calendar.MARCH, 1);
+        }
+        
+        // Find first Monday on or after target date
+        while (target.get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) {
+            target.add(Calendar.DAY_OF_MONTH, 1);
+        }
+        
+        return target;
     }
 
     /**
@@ -638,7 +789,7 @@ public class HomeFragment extends Fragment {
                                 public void onMapping(ColumnMapDialogFragment.MappingResult result) {
                                     previousMapping = result;
                                     parserExecutor.submit(() -> {
-                                        List<Course> p = Course.fromRows(finalPath, "sheet1", 0, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx);
+                                        List<Course> p = Course.fromRows(finalPath, "sheet1", 0, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx, result.locationIdx);
                                         getActivity().runOnUiThread(() -> mergeParsedCourses(p));
                                         if (result.applyToAll) applyMappingToAll = true;
                                     });
@@ -648,7 +799,7 @@ public class HomeFragment extends Fragment {
                                 public void onUsePrevious() {
                                     if (previousMapping != null) {
                                         parserExecutor.submit(() -> {
-                                            List<Course> p = Course.fromRows(finalPath, "sheet1", 0, dataRows, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx);
+                                            List<Course> p = Course.fromRows(finalPath, "sheet1", 0, dataRows, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, previousMapping.locationIdx);
                                             getActivity().runOnUiThread(() -> mergeParsedCourses(p));
                                         });
                                     }
@@ -656,8 +807,8 @@ public class HomeFragment extends Fragment {
                             });
                             
                             // 预填充自动映射结果或上次的映射
-                            if (map != null && !(map[0] == -1 && map[1] == -1 && map[2] == -1 && map[3] == -1)) {
-                                dlg.setPrefillMapping(new ColumnMapDialogFragment.MappingResult(map[0], map[1], map[2], map[3], false));
+                            if (map != null && !(map[0] == -1 && map[1] == -1 && map[2] == -1 && map[3] == -1 && map[4] == -1)) {
+                                dlg.setPrefillMapping(new ColumnMapDialogFragment.MappingResult(map[0], map[1], map[2], map[3], map[4], false));
                             } else if (previousMapping != null) {
                                 dlg.setPrefillMapping(previousMapping);
                             }
@@ -720,11 +871,11 @@ public class HomeFragment extends Fragment {
      * 优先匹配明确的关键字，如果找不到则使用启发式规则
      * 
      * @param header 表头数组
-     * @return 映射结果数组[titleIdx, timeIdx, teacherIdx, unitIdx]，未找到的列返回-1
+     * @return 映射结果数组[titleIdx, timeIdx, teacherIdx, unitIdx, locationIdx]，未找到的列返回-1
      */
     private int[] autoMapHeader(String[] header) {
-        int titleIdx = -1, timeIdx = -1, teacherIdx = -1, unitIdx = -1;
-        if (header == null) return new int[]{-1, -1, -1, -1};
+        int titleIdx = -1, timeIdx = -1, teacherIdx = -1, unitIdx = -1, locationIdx = -1;
+        if (header == null) return new int[]{-1, -1, -1, -1, -1};
 
         // 第一轮：明确的关键字匹配
         for (int i = 0; i < header.length; i++) {
@@ -745,6 +896,8 @@ public class HomeFragment extends Fragment {
                                    h.contains("lecturer") || h.contains("教授") || h.contains("导师"))) teacherIdx = i;
             if (unitIdx == -1 && (h.contains("学院") || h.contains("单位") || h.contains("系") || h.contains("department") ||
                                 h.contains("学院") || h.contains("专业"))) unitIdx = i;
+            if (locationIdx == -1 && (h.contains("地点") || h.contains("教室") || h.contains("location") || h.contains("room") ||
+                                    h.contains("place") || h.contains("where"))) locationIdx = i;
         }
 
         // 第二轮：标题列的备用逻辑（如果第一轮未找到）
@@ -768,7 +921,7 @@ public class HomeFragment extends Fragment {
             titleIdx = 0;
         }
 
-        return new int[]{titleIdx, timeIdx, teacherIdx, unitIdx};
+        return new int[]{titleIdx, timeIdx, teacherIdx, unitIdx, locationIdx};
     }
 
     /**
@@ -816,7 +969,7 @@ public class HomeFragment extends Fragment {
                 
                 parserExecutor.submit(() -> {
                     // 解析当前Sheet的数据
-                    List<Course> p = Course.fromRows(path, ps.name, ps.sheetIndex, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx);
+                    List<Course> p = Course.fromRows(path, ps.name, ps.sheetIndex, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx, result.locationIdx);
                     synchronized (parsed) { parsed.addAll(p); }
                     getActivity().runOnUiThread(() -> mergeParsedCourses(p));
                     
@@ -826,7 +979,7 @@ public class HomeFragment extends Fragment {
                         while (it.hasNext()) remaining.add(it.next());
                         for (PendingSheet ps2 : remaining) {
                             List<String[]> dataRows2 = ps2.rows.size() > 1 ? ps2.rows.subList(1, ps2.rows.size()) : new ArrayList<>();
-                            List<Course> p2 = Course.fromRows(path, ps2.name, ps2.sheetIndex, dataRows2, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx);
+                            List<Course> p2 = Course.fromRows(path, ps2.name, ps2.sheetIndex, dataRows2, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, previousMapping.locationIdx);
                             synchronized (parsed) { parsed.addAll(p2); }
                             getActivity().runOnUiThread(() -> mergeParsedCourses(p2));
                         }
@@ -843,7 +996,7 @@ public class HomeFragment extends Fragment {
                 if (previousMapping != null) {
                     List<String[]> dataRows = ps.rows.size() > 1 ? ps.rows.subList(1, ps.rows.size()) : new ArrayList<>();
                     parserExecutor.submit(() -> {
-                        List<Course> p = Course.fromRows(path, ps.name, ps.sheetIndex, dataRows, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx);
+                        List<Course> p = Course.fromRows(path, ps.name, ps.sheetIndex, dataRows, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, previousMapping.locationIdx);
                         synchronized (parsed) { parsed.addAll(p); }
                         getActivity().runOnUiThread(() -> processNextPending(it, parsed, path));
                     });
@@ -854,8 +1007,8 @@ public class HomeFragment extends Fragment {
         });
         
         // 预填充自动映射结果或上次的映射
-        if (ps.autoMap != null && !(ps.autoMap[0] == -1 && ps.autoMap[1] == -1 && ps.autoMap[2] == -1 && ps.autoMap[3] == -1)) {
-            dlg.setPrefillMapping(new ColumnMapDialogFragment.MappingResult(ps.autoMap[0], ps.autoMap[1], ps.autoMap[2], ps.autoMap[3], false));
+        if (ps.autoMap != null && !(ps.autoMap[0] == -1 && ps.autoMap[1] == -1 && ps.autoMap[2] == -1 && ps.autoMap[3] == -1 && ps.autoMap[4] == -1)) {
+            dlg.setPrefillMapping(new ColumnMapDialogFragment.MappingResult(ps.autoMap[0], ps.autoMap[1], ps.autoMap[2], ps.autoMap[3], ps.autoMap[4], false));
         } else if (previousMapping != null) {
             dlg.setPrefillMapping(previousMapping);
         }
@@ -1037,13 +1190,19 @@ public class HomeFragment extends Fragment {
                         Drawable background = rootCard.getBackground();
                         if (background instanceof LayerDrawable) {
                             LayerDrawable layerDrawable = (LayerDrawable) background;
-                            if (layerDrawable.getNumberOfLayers() > 1) {
-                                Drawable fillLayer = layerDrawable.getDrawable(1);
-                                if (fillLayer instanceof ClipDrawable) {
-                                    ClipDrawable clipDrawable = (ClipDrawable) fillLayer;
-                                    clipDrawable.setLevel(actualScore * 1000);
-                                    rootCard.invalidate();
+                            // 查找ClipDrawable层
+                            ClipDrawable clipDrawable = null;
+                            for (int i = 0; i < layerDrawable.getNumberOfLayers(); i++) {
+                                Drawable d = layerDrawable.getDrawable(i);
+                                if (d instanceof ClipDrawable) {
+                                    clipDrawable = (ClipDrawable) d;
+                                    break;
                                 }
+                            }
+                            
+                            if (clipDrawable != null) {
+                                clipDrawable.setLevel(actualScore * 1000);
+                                rootCard.invalidate();
                             }
                         }
                         
@@ -1060,13 +1219,19 @@ public class HomeFragment extends Fragment {
                     Drawable background = rootCard.getBackground();
                     if (background instanceof LayerDrawable) {
                         LayerDrawable layerDrawable = (LayerDrawable) background;
-                        if (layerDrawable.getNumberOfLayers() > 1) {
-                            Drawable fillLayer = layerDrawable.getDrawable(1);
-                            if (fillLayer instanceof ClipDrawable) {
-                                ClipDrawable clipDrawable = (ClipDrawable) fillLayer;
-                                clipDrawable.setLevel(0);
-                                rootCard.invalidate();
+                        // 查找ClipDrawable层
+                        ClipDrawable clipDrawable = null;
+                        for (int i = 0; i < layerDrawable.getNumberOfLayers(); i++) {
+                            Drawable d = layerDrawable.getDrawable(i);
+                            if (d instanceof ClipDrawable) {
+                                clipDrawable = (ClipDrawable) d;
+                                break;
                             }
+                        }
+                        
+                        if (clipDrawable != null) {
+                            clipDrawable.setLevel(0);
+                            rootCard.invalidate();
                         }
                     }
                 }
@@ -1101,17 +1266,37 @@ public class HomeFragment extends Fragment {
             tvScore.setVisibility(View.VISIBLE);
         }
         
+        // 判断是否显示进度条（仅课程显示，标题不显示）
+        boolean showProgressBar = true;
+        if (adapter != null) {
+            int pos = viewHolder.getAdapterPosition();
+            if (pos != RecyclerView.NO_POSITION) {
+                // 2 is COURSE. 0/1 are Header/Sheet.
+                if (adapter.getItemViewType(pos) != 2) showProgressBar = false;
+            }
+        }
+        
         // 更新进度条
         Drawable background = rootCard.getBackground();
         if (background instanceof LayerDrawable) {
             LayerDrawable layerDrawable = (LayerDrawable) background;
-            if (layerDrawable.getNumberOfLayers() > 1) {
-                Drawable fillLayer = layerDrawable.getDrawable(1);
-                if (fillLayer instanceof ClipDrawable) {
-                    ClipDrawable clipDrawable = (ClipDrawable) fillLayer;
-                    clipDrawable.setLevel(displayScore * 1000);
-                    rootCard.invalidate();
+            // 查找ClipDrawable层
+            ClipDrawable clipDrawable = null;
+            for (int i = 0; i < layerDrawable.getNumberOfLayers(); i++) {
+                Drawable d = layerDrawable.getDrawable(i);
+                if (d instanceof ClipDrawable) {
+                    clipDrawable = (ClipDrawable) d;
+                    break;
                 }
+            }
+            
+            if (clipDrawable != null) {
+                if (showProgressBar) {
+                    clipDrawable.setLevel(displayScore * 1000);
+                } else {
+                    clipDrawable.setLevel(0);
+                }
+                rootCard.invalidate();
             }
         }
     }
@@ -1256,5 +1441,16 @@ public class HomeFragment extends Fragment {
                 vm.save(updated);
             }
         });
+    }
+
+    private void showCourseDetail(Course c) {
+        if (c == null) return;
+        // Request 8: Beautify pop-ups using CourseDetailFragment
+        try {
+            CourseDetailFragment d = CourseDetailFragment.newInstance(c);
+            d.show(getParentFragmentManager(), "course_detail");
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 }

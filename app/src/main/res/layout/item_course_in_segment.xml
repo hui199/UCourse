@@ -15,7 +15,8 @@
         android:textStyle="bold"
         android:gravity="center"
         android:maxLines="2"
-        android:ellipsize="end" />
+        android:ellipsize="end"
+        android:drawablePadding="4dp" />
 
     <TextView
         android:id="@+id/tv_course_id"

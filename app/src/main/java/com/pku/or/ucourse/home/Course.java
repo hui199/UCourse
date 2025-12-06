@@ -18,6 +18,16 @@ public class Course {
     public String sheetName;   // 来源Sheet名称
     public int sheetIndex = 0; // Sheet索引（用于排序显示）
     public String groupKey;    // 分组键（通常为学院名称）
+    public String credits;     // 学分
+    public String hours;       // 学时
+    public String type;        // 课程类型
+    public String location;    // 上课地点
+    public String timeStr;     // 格式化的时间字符串
+
+    // Transient fields for UI display (Diff/Frequency)
+    public String diffStatus = "normal"; // "normal", "added", "removed"
+    public int frequency = 0;  // Frequency of this course across all solutions
+
 
     public Course() {}
 
@@ -34,7 +44,7 @@ public class Course {
      * @param unitIdx    单位列索引
      * @return 课程列表
      */
-    public static List<Course> fromRows(String fileId, String sheetName, int sheetIndex, List<String[]> rows, int titleIdx, int timeIdx, int teacherIdx, int unitIdx) {
+    public static List<Course> fromRows(String fileId, String sheetName, int sheetIndex, List<String[]> rows, int titleIdx, int timeIdx, int teacherIdx, int unitIdx, int locationIdx) {
         List<Course> out = new ArrayList<>();
         for (int i = 0; i < rows.size(); i++) {
             String[] r = rows.get(i);
@@ -47,6 +57,7 @@ public class Course {
             c.rawTime = timeIdx >=0 && timeIdx < r.length ? r[timeIdx] : "";
             c.teachers = teacherIdx >=0 && teacherIdx < r.length ? r[teacherIdx] : "";
             c.unit = unitIdx >=0 && unitIdx < r.length ? r[unitIdx] : "";
+            c.location = locationIdx >=0 && locationIdx < r.length ? r[locationIdx] : "";
             c.groupKey = c.unit != null ? c.unit : "";
             
             // 生成绝对唯一的ID（包含时间戳和随机数）

@@ -30,6 +30,28 @@ public class CourseTimeParser {
     // same fix for list-style pattern
     private static final Pattern LIST_PAT = Pattern.compile("(?:周)?([一二三四五六日天1-7])[^\\d零一二三四五六七八九十0-9\\-~\\u2013\\u2014]*?((?:\\d+[,、，;；\\s])*(?:\\d+))节");
 
+    // Week range pattern: 1-16周, 1-8,10-16周
+    private static final Pattern WEEK_RANGE_PAT = Pattern.compile("(\\d+)(?:[-~](\\d+))?周");
+
+    public static int[] parseWeekRange(String raw) {
+        if (raw == null) return new int[]{1, 16};
+        Matcher m = WEEK_RANGE_PAT.matcher(raw);
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        boolean found = false;
+        while(m.find()) {
+             try {
+                 int start = Integer.parseInt(m.group(1));
+                 int end = (m.group(2) != null && !m.group(2).isEmpty()) ? Integer.parseInt(m.group(2)) : start;
+                 if (start < min) min = start;
+                 if (end > max) max = end;
+                 found = true;
+             } catch (Exception e) {}
+        }
+        if (!found) return new int[]{1, 16};
+        return new int[]{min, max};
+    }
+
     public static List<TimeSlot> parse(String raw) {
         Set<String> seen = new HashSet<>();
         List<TimeSlot> out = new ArrayList<>();
