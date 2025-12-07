@@ -37,7 +37,8 @@
         app:itemIconTint="@color/nav_item_color_state"
         app:itemTextColor="@color/nav_item_color_state"
         app:labelVisibilityMode="labeled"
-        app:menu="@menu/bottom_navigation_menu"/>
+        app:menu="@menu/bottom_navigation_menu"
+        app:itemRippleColor="@null"/>
 
 
 </RelativeLayout>

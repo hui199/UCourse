@@ -662,10 +662,10 @@ public class HomeFragment extends Fragment {
                 drawables[0].setColorFilter(Color.RED, PorterDuff.Mode.SRC_IN);
             }
         } else {
-            // Set: Remove visual cue (Default tint)
+            // Set: Change icon to white
             Drawable[] drawables = btnSetStartDate.getCompoundDrawables();
             if (drawables[0] != null) {
-                drawables[0].clearColorFilter();
+                drawables[0].setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
             }
         }
     }

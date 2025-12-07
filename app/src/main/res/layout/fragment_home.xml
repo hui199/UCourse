@@ -28,7 +28,7 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="设置第一周"
-            android:drawableLeft="@android:drawable/ic_menu_my_calendar"
+            android:drawableLeft="@drawable/calendar_check_24px"
             android:drawablePadding="8dp" />
 
     </LinearLayout>
