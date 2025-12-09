@@ -351,7 +351,7 @@ public class HomeFragment extends Fragment {
                                     adapter.updateParentHeaderForCourseDrag(rv, currentItemId, newScoreFloat);
                                 } else { // Sheet or File
                                     // Update the header itself (based on children + delta)
-                                    adapter.updateHeaderStyleForDrag(rv, currentViewHolder, scoreChangeFloat);
+                                    adapter.updateHeaderStyleForDrag(currentViewHolder, scoreChangeFloat);
                                 }
                             }
 
@@ -386,6 +386,8 @@ public class HomeFragment extends Fragment {
                                         updateVisibleCoursesForSheet(rv, currentItemId, scoreChangeFloat);
                                     } else if (itType == 0) {
                                         updateVisibleCoursesForFile(rv, currentItemId, scoreChangeFloat);
+                                        // Update child headers (Sheets/Units) visual style
+                                        adapter.updateChildHeadersForFileDrag(rv, currentItemId, scoreChangeFloat);
                                     }
                                 }
                             } catch (Throwable _t) {}
@@ -406,34 +408,23 @@ public class HomeFragment extends Fragment {
 
                             // 立即把视图更新为最终分数，避免异步保存带来的闪跳
                             try {
-                                View rootCard = currentViewHolder.itemView.findViewById(R.id.root_card);
-                                android.widget.TextView tvScore = currentViewHolder.itemView.findViewById(R.id.tv_interest_score);
-                                if (rootCard != null) {
-                                    Drawable background = rootCard.getBackground();
-                                    if (background instanceof LayerDrawable) {
-                                        LayerDrawable layerDrawable = (LayerDrawable) background;
-                                        if (layerDrawable.getNumberOfLayers() > 1) {
-                                            Drawable fillLayer = layerDrawable.getDrawable(1);
-                                            if (fillLayer instanceof ClipDrawable) {
-                                                ClipDrawable clipDrawable = (ClipDrawable) fillLayer;
-                                                clipDrawable.setLevel(finalScore * 1000);
-                                                rootCard.invalidate();
-                                            }
-                                        }
-                                    }
+                                if (adapter != null) {
+                                    // 统一更新课程分数并刷新父级标题样式（包含发光/灰色逻辑）
+                                    int pos = currentViewHolder.getAdapterPosition();
+                                    adapter.updateItemScore(rv, pos, finalScore);
                                 }
+
+                                android.widget.TextView tvScore = currentViewHolder.itemView.findViewById(R.id.tv_interest_score);
                                 if (tvScore != null) {
                                     // 对于Sheet/File显示增量，对单一课程显示最终分数
                                     int pos = currentViewHolder.getAdapterPosition();
                                     if (pos != RecyclerView.NO_POSITION && adapter != null) {
                                         int itType = adapter.getTypeForPosition(pos);
                                         if (itType == 1 || itType == 0) { // Sheet or File
-                                            String s = (scoreChange > 0 ? ("+" + scoreChange) : String.valueOf(scoreChange));
-                                            tvScore.setText(s);
-                                            tvScore.setVisibility(View.VISIBLE);
-                                            // hide the static count while delta is shown
+                                            // 手指离开后隐藏数值显示并恢复显示条目数
+                                            tvScore.setVisibility(View.GONE);
                                             android.widget.TextView tvCount = currentViewHolder.itemView.findViewById(R.id.tv_count);
-                                            if (tvCount != null) tvCount.setVisibility(View.GONE);
+                                            if (tvCount != null) tvCount.setVisibility(View.VISIBLE);
                                         } else {
                                             tvScore.setText(String.valueOf(finalScore));
                                             tvScore.setVisibility(View.VISIBLE);
@@ -569,35 +560,31 @@ public class HomeFragment extends Fragment {
                 if (vh == null) continue;
                 int pos = vh.getAdapterPosition();
                 if (pos == RecyclerView.NO_POSITION) continue;
-                
                 int t = adapter.getTypeForPosition(pos);
-                String id = adapter.getIdForPosition(pos);
+                if (t != 2) continue; // 只处理课程项
+                // 检查课程是否属于该Sheet
                 String parent = adapter.getParentIdForPosition(pos);
-                
-                // 检查是否为目标Sheet的头部
-                boolean isSheetHeader = (t == 1 && id != null && id.equals(sheetId));
-                // 检查是否为目标Sheet下的课程
-                boolean isChildCourse = (t == 2 && parent != null && parent.equals(sheetId));
-                
-                if (isSheetHeader) {
-                    // 更新Sheet头部样式
-                    adapter.updateHeaderStyleForDrag(rv, vh, deltaFloat);
-                } else if (isChildCourse) {
-                    // 更新课程样式
-                    Course c = null;
-                    try {
-                        List<Course> cur = vm.courses.getValue();
-                        if (cur != null) {
-                            for (Course cc : cur) {
-                                if (cc != null && cc.id != null && cc.id.equals(id)) { c = cc; break; }
-                            }
-                        }
-                    } catch (Throwable _t) { }
-                    int base = c == null ? 5 : Math.max(0, Math.min(10, c.interest));
-                    float fv = base + deltaFloat;
-                    int display = Math.max(0, Math.min(10, Math.round(fv)));
+                if (parent == null) continue;
+                if (!parent.equals(sheetId)) continue;
 
-                    adapter.updateItemStyle(vh, display, 2);
+                // 基于课程原始分数计算临时显示分数
+                Course c = null;
+                try {
+                    // adapter的display并非公开，我们查询vm中的课程
+                    List<Course> cur = vm.courses.getValue();
+                    if (cur != null) {
+                        for (Course cc : cur) {
+                            if (cc != null && cc.id != null && cc.id.equals(adapter.getIdForPosition(pos))) { c = cc; break; }
+                        }
+                    }
+                } catch (Throwable _t) { }
+                int base = c == null ? 5 : Math.max(0, Math.min(10, c.interest));
+                float fv = base + deltaFloat;
+                int display = Math.max(0, Math.min(10, Math.round(fv)));
+
+                // 实时更新Item样式（背景、文字颜色、进度条等）
+                if (adapter != null) {
+                    adapter.updateItemStyle(vh, display, 2); // 2 = TYPE_COURSE
                 }
             }
         } catch (Throwable _t) {}
@@ -615,29 +602,23 @@ public class HomeFragment extends Fragment {
                 if (vh == null) continue;
                 int pos = vh.getAdapterPosition();
                 if (pos == RecyclerView.NO_POSITION) continue;
-                
                 int t = adapter.getTypeForPosition(pos);
-                String id = adapter.getIdForPosition(pos);
-                String parent = adapter.getParentIdForPosition(pos);
                 
-                // 检查是否为目标File头部
-                boolean isFileHeader = (t == 0 && id != null && id.equals(fileId));
-                // 检查是否为目标File下的Sheet头部
-                boolean isSheetHeader = (t == 1 && parent != null && parent.equals(fileId));
-                // 检查是否为目标File下的课程 (parent is sheetId = fileId|sheetName)
-                boolean isChildCourse = (t == 2 && parent != null && parent.startsWith(fileId + "|"));
+                String parent = adapter.getParentIdForPosition(pos); // Sheet ID (fileId|sheetName) or null
                 
-                if (isFileHeader || isSheetHeader) {
-                    // 更新File或Sheet头部样式
-                    adapter.updateHeaderStyleForDrag(rv, vh, deltaFloat);
-                } else if (isChildCourse) {
-                    // 更新课程样式
+                // Case 1: Course Item (type=2)
+                if (t == 2) {
+                    if (parent == null) continue;
+                    if (!parent.startsWith(fileId + "|")) continue;
+
+                    // 基于课程原始分数计算临时显示分数
                     Course c = null;
                     try {
+                        // adapter的display并非公开，我们查询vm中的课程
                         List<Course> cur = vm.courses.getValue();
                         if (cur != null) {
                             for (Course cc : cur) {
-                                if (cc != null && cc.id != null && cc.id.equals(id)) { c = cc; break; }
+                                if (cc != null && cc.id != null && cc.id.equals(adapter.getIdForPosition(pos))) { c = cc; break; }
                             }
                         }
                     } catch (Throwable _t) { }
@@ -645,7 +626,18 @@ public class HomeFragment extends Fragment {
                     float fv = base + deltaFloat;
                     int display = Math.max(0, Math.min(10, Math.round(fv)));
 
-                    adapter.updateItemStyle(vh, display, 2);
+                    // 实时更新Item样式（背景、文字颜色、进度条等）
+                    adapter.updateItemStyle(vh, display, 2); // 2 = TYPE_COURSE
+                } 
+                // Case 2: Sheet Header (type=1)
+                else if (t == 1) {
+                    // Sheet's parentId is the fileId
+                    String pId = adapter.getParentIdForPosition(pos);
+                    if (pId != null && pId.equals(fileId)) {
+                        // Update the Sheet header style based on the drag delta
+                        // This will calculate the hypothetical stats of courses in this sheet with the delta applied
+                        adapter.updateHeaderStyleForDrag(vh, deltaFloat);
+                    }
                 }
             }
         } catch (Throwable _t) {}
@@ -662,10 +654,10 @@ public class HomeFragment extends Fragment {
                 drawables[0].setColorFilter(Color.RED, PorterDuff.Mode.SRC_IN);
             }
         } else {
-            // Set: Change icon to white
+            // Set: Remove visual cue (Default tint)
             Drawable[] drawables = btnSetStartDate.getCompoundDrawables();
             if (drawables[0] != null) {
-                drawables[0].setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
+                drawables[0].clearColorFilter();
             }
         }
     }
@@ -789,7 +781,7 @@ public class HomeFragment extends Fragment {
                                 public void onMapping(ColumnMapDialogFragment.MappingResult result) {
                                     previousMapping = result;
                                     parserExecutor.submit(() -> {
-                                        List<Course> p = Course.fromRows(finalPath, "sheet1", 0, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx, result.locationIdx);
+                                        List<Course> p = Course.fromRows(finalPath, "sheet1", 0, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx, -1);
                                         getActivity().runOnUiThread(() -> mergeParsedCourses(p));
                                         if (result.applyToAll) applyMappingToAll = true;
                                     });
@@ -799,16 +791,16 @@ public class HomeFragment extends Fragment {
                                 public void onUsePrevious() {
                                     if (previousMapping != null) {
                                         parserExecutor.submit(() -> {
-                                            List<Course> p = Course.fromRows(finalPath, "sheet1", 0, dataRows, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, previousMapping.locationIdx);
-                                            getActivity().runOnUiThread(() -> mergeParsedCourses(p));
-                                        });
+                                        List<Course> p = Course.fromRows(finalPath, "sheet1", 0, dataRows, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, -1);
+                                        getActivity().runOnUiThread(() -> mergeParsedCourses(p));
+                                    });
                                     }
                                 }
                             });
                             
                             // 预填充自动映射结果或上次的映射
-                            if (map != null && !(map[0] == -1 && map[1] == -1 && map[2] == -1 && map[3] == -1 && map[4] == -1)) {
-                                dlg.setPrefillMapping(new ColumnMapDialogFragment.MappingResult(map[0], map[1], map[2], map[3], map[4], false));
+                            if (map != null && !(map[0] == -1 && map[1] == -1 && map[2] == -1 && map[3] == -1)) {
+                                dlg.setPrefillMapping(new ColumnMapDialogFragment.MappingResult(map[0], map[1], map[2], map[3], false));
                             } else if (previousMapping != null) {
                                 dlg.setPrefillMapping(previousMapping);
                             }
@@ -968,9 +960,9 @@ public class HomeFragment extends Fragment {
                 List<String[]> dataRows = ps.rows.size() > 1 ? ps.rows.subList(1, ps.rows.size()) : new ArrayList<>();
                 
                 parserExecutor.submit(() -> {
-                    // 解析当前Sheet的数据
-                    List<Course> p = Course.fromRows(path, ps.name, ps.sheetIndex, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx, result.locationIdx);
-                    synchronized (parsed) { parsed.addAll(p); }
+                        // 解析当前Sheet的数据
+                        List<Course> p = Course.fromRows(path, ps.name, ps.sheetIndex, dataRows, result.titleIdx, result.timeIdx, result.teacherIdx, result.unitIdx, -1);
+                        synchronized (parsed) { parsed.addAll(p); }
                     getActivity().runOnUiThread(() -> mergeParsedCourses(p));
                     
                     // 如果选择"应用到所有"，批量处理剩余Sheet
@@ -979,7 +971,7 @@ public class HomeFragment extends Fragment {
                         while (it.hasNext()) remaining.add(it.next());
                         for (PendingSheet ps2 : remaining) {
                             List<String[]> dataRows2 = ps2.rows.size() > 1 ? ps2.rows.subList(1, ps2.rows.size()) : new ArrayList<>();
-                            List<Course> p2 = Course.fromRows(path, ps2.name, ps2.sheetIndex, dataRows2, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, previousMapping.locationIdx);
+                            List<Course> p2 = Course.fromRows(path, ps2.name, ps2.sheetIndex, dataRows2, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, -1);
                             synchronized (parsed) { parsed.addAll(p2); }
                             getActivity().runOnUiThread(() -> mergeParsedCourses(p2));
                         }
@@ -996,7 +988,7 @@ public class HomeFragment extends Fragment {
                 if (previousMapping != null) {
                     List<String[]> dataRows = ps.rows.size() > 1 ? ps.rows.subList(1, ps.rows.size()) : new ArrayList<>();
                     parserExecutor.submit(() -> {
-                        List<Course> p = Course.fromRows(path, ps.name, ps.sheetIndex, dataRows, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, previousMapping.locationIdx);
+                        List<Course> p = Course.fromRows(path, ps.name, ps.sheetIndex, dataRows, previousMapping.titleIdx, previousMapping.timeIdx, previousMapping.teacherIdx, previousMapping.unitIdx, -1);
                         synchronized (parsed) { parsed.addAll(p); }
                         getActivity().runOnUiThread(() -> processNextPending(it, parsed, path));
                     });
@@ -1007,8 +999,8 @@ public class HomeFragment extends Fragment {
         });
         
         // 预填充自动映射结果或上次的映射
-        if (ps.autoMap != null && !(ps.autoMap[0] == -1 && ps.autoMap[1] == -1 && ps.autoMap[2] == -1 && ps.autoMap[3] == -1 && ps.autoMap[4] == -1)) {
-            dlg.setPrefillMapping(new ColumnMapDialogFragment.MappingResult(ps.autoMap[0], ps.autoMap[1], ps.autoMap[2], ps.autoMap[3], ps.autoMap[4], false));
+        if (ps.autoMap != null && !(ps.autoMap[0] == -1 && ps.autoMap[1] == -1 && ps.autoMap[2] == -1 && ps.autoMap[3] == -1)) {
+            dlg.setPrefillMapping(new ColumnMapDialogFragment.MappingResult(ps.autoMap[0], ps.autoMap[1], ps.autoMap[2], ps.autoMap[3], false));
         } else if (previousMapping != null) {
             dlg.setPrefillMapping(previousMapping);
         }
@@ -1409,9 +1401,10 @@ public class HomeFragment extends Fragment {
                 if (type == 2) {
                     if (c.id != null && c.id.equals(id)) match = true;
                 } else if (type == 1) {
-                    String sheetKey = ((c.fileId == null ? "<nofile>" : c.fileId).trim()) + "|" + ((c.sheetName == null ? "<nosheet>" : c.sheetName).trim());
-                    String normId = id == null ? "" : id.trim();
-                    if (!normId.isEmpty() && normId.equals(sheetKey)) match = true;
+                    // Sheet下的所有课程
+                    // Strict match with adapter ID construction (no extra trimming)
+                    String sheetKey = (c.fileId == null ? "<nofile>" : c.fileId) + "|" + (c.sheetName == null ? "<nosheet>" : c.sheetName);
+                    if (id != null && id.equals(sheetKey)) match = true;
                 } else if (type == 0) {
                     String cf = c.fileId == null ? "<nofile>" : c.fileId;
                     if (cf.equals(targetFile)) match = true;
@@ -1432,10 +1425,7 @@ public class HomeFragment extends Fragment {
             if (rv != null) {
                 rv.post(() -> {
                     vm.save(updated);
-                    // 刷新整个列表，保证UI状态一致
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (adapter != null) adapter.notifyDataSetChanged();
-                    }, 120);
+                    // 移除延迟刷新，完全依赖LiveData观察者来更新UI，避免数据竞争导致的视觉回退
                 });
             } else {
                 vm.save(updated);

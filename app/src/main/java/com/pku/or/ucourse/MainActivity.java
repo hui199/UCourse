@@ -49,13 +49,13 @@ public class MainActivity extends AppCompatActivity {
             timeFragment = new TimeFragment();
             resultFragment = new ResultFragment();
 
-            // 添加所有Fragment到容器，初始只显示homeFragment
+            // 添加所有Fragment到容器，初始只显示timeFragment
             fragmentManager.beginTransaction()
                     .add(R.id.fragment_container, resultFragment, TAG_RESULT).hide(resultFragment)
-                    .add(R.id.fragment_container, timeFragment, TAG_TIME).hide(timeFragment)
-                    .add(R.id.fragment_container, homeFragment, TAG_HOME)
+                    .add(R.id.fragment_container, homeFragment, TAG_HOME).hide(homeFragment)
+                    .add(R.id.fragment_container, timeFragment, TAG_TIME)
                     .commit();
-            activeFragment = homeFragment;
+            activeFragment = timeFragment;
         } else {
             // 配置变更后恢复：通过TAG查找已存在的Fragment
             homeFragment = fragmentManager.findFragmentByTag(TAG_HOME);
@@ -88,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
         // 确保底部导航的初始高亮与当前显示的Fragment一致
         if (activeFragment == homeFragment) {
             bottomNavigationView.setSelectedItemId(R.id.navigation_home);
-            if (getSupportActionBar() != null) getSupportActionBar().setTitle("课程选择");
+            if (getSupportActionBar() != null) getSupportActionBar().setTitle("课程选择 v1.0.0");
         } else if (activeFragment == timeFragment) {
             bottomNavigationView.setSelectedItemId(R.id.navigation_time);
             if (getSupportActionBar() != null) getSupportActionBar().setTitle("时间设置");
@@ -111,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
         
         if (getSupportActionBar() != null) {
             if (targetFragment instanceof com.pku.or.ucourse.home.HomeFragment) {
-                getSupportActionBar().setTitle("课程选择");
+                getSupportActionBar().setTitle("课程选择 v1.0.0");
             } else if (targetFragment instanceof TimeFragment) {
                 getSupportActionBar().setTitle("时间设置");
             } else if (targetFragment instanceof ResultFragment) {

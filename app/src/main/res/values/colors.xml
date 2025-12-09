@@ -45,7 +45,7 @@
     <color name="afternoon_background">#FFF3E0</color>
     <color name="evening_background">#E3F2FD</color>
     <color name="morning_background">#E8F5E9</color>
-    <color name="today_highlight_color">#E3F2FD</color>
+    <color name="today_highlight_color">#81C784</color>
     <color name="time_slot_stroke_color">#BDBDBD</color>
     <color name="header_text_color">#212121</color>
     <color name="grid_line_color">#EEEEEE</color>

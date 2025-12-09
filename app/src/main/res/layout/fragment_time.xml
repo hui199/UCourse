@@ -39,9 +39,10 @@
         android:layout_height="wrap_content"
         android:text="选择周次日期"
         android:layout_marginTop="8dp"
-        android:background="@color/time_slot_color"
+        android:backgroundTint="@color/colorPrimary"
         android:textColor="@android:color/white"
-        android:textSize="14sp" />
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
     <Button
         android:id="@+id/clearButton"
@@ -49,8 +50,9 @@
         android:layout_height="wrap_content"
         android:text="清空选择"
         android:layout_marginTop="8dp"
-        android:background="@color/time_slot_color"
+        android:backgroundTint="@color/colorPrimary"
         android:textColor="@android:color/white"
-        android:textSize="14sp" />
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
 </LinearLayout>

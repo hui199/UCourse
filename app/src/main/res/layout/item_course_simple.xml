@@ -2,19 +2,9 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="28dp"
-    android:paddingEnd="8dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp"
     android:foreground="?attr/selectableItemBackground">
 
-    <!-- 左侧边框指示器（课程级别） -->
-    <View
-        android:layout_width="4dp"
-        android:layout_height="match_parent"
-        android:layout_marginStart="-24dp"
-        android:background="#81C784"
-        android:alpha="0.6" />
+    <!-- 左侧边框指示器已移除 -->
 
     <LinearLayout
         android:id="@+id/root_card"
@@ -22,6 +12,10 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:background="@drawable/bg_item_card"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:paddingTop="10dp"
@@ -32,7 +26,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:background="@android:color/transparent">
 
             <TextView
                 android:id="@+id/tv_title"

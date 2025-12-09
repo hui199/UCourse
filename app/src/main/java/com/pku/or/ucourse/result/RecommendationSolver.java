@@ -98,6 +98,20 @@ public class RecommendationSolver {
     private final AtomicLong prunedCount = new AtomicLong(0);
     private volatile boolean timedOut = false;
     public volatile String lastSummary = "";
+    private volatile long estimatedTotalNodes = 100; // Default to avoid div by zero
+    private volatile double currentProgress = 0.0;
+
+    public int getProgress() {
+        return (int) (currentProgress * 100);
+    }
+
+    public long getNodesVisited() {
+        return nodesVisited.get();
+    }
+    
+    public long getEstimatedTotalNodes() {
+        return estimatedTotalNodes;
+    }
 
     public RecommendationSolver(List<Course> courses, Map<String, List<TimeSlot>> courseTimeSlots, WeekTimeData freeTimes, int K, long timeLimitMs) {
         this.allCourses = new ArrayList<>(courses == null ? Collections.emptyList() : courses);
@@ -133,6 +147,16 @@ public class RecommendationSolver {
         Collections.sort(feasible, (a, b) -> Integer.compare(b.interest, a.interest));
         
         Log.d(UCourse_TAG, "可行课程数: " + feasible.size() + ", 预处理耗时: " + (System.currentTimeMillis() - filterStart) + "ms");
+        
+        // Estimate search space: 2^N
+        // If N > 60, we cap at Long.MAX_VALUE
+        if (feasible.size() > 60) {
+            estimatedTotalNodes = Long.MAX_VALUE;
+        } else {
+            estimatedTotalNodes = (1L << feasible.size());
+        }
+        // If estimate is too small, bump it up
+        if (estimatedTotalNodes < 100) estimatedTotalNodes = 100;
 
         // 3. 准备Bitmasks加速冲突检测
         int n = feasible.size();
@@ -167,14 +191,83 @@ public class RecommendationSolver {
         List<Solution> bestSolutions = new ArrayList<>();
         AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
         
-        dfs(0, feasible, masks, new HashSet<>(), new ArrayList<>(), 0, suffixSum, bestSolutions, startTime);
+        currentProgress = 0.0;
+        dfs(0, feasible, masks, new HashSet<>(), new ArrayList<>(), 0, suffixSum, bestSolutions, startTime, 1.0);
+        currentProgress = 1.0; // Ensure 100% at the end
+        
+        // Post-processing: Filter out subset solutions (User Request 6)
+        // If Solution A is a subset of Solution B, remove A.
+        // Since we filtered out <= 0 interest courses, a superset B will always have score >= subset A.
+        List<Solution> finalSolutions = new ArrayList<>();
+        for (int i = 0; i < bestSolutions.size(); i++) {
+            Solution sub = bestSolutions.get(i);
+            boolean isSubset = false;
+            for (int j = 0; j < bestSolutions.size(); j++) {
+                if (i == j) continue;
+                Solution sup = bestSolutions.get(j);
+                
+                // Check if sub is subset of sup
+                if (isSubset(sub, sup)) {
+                    isSubset = true;
+                    break;
+                }
+            }
+            if (!isSubset) {
+                finalSolutions.add(sub);
+            }
+        }
         
         long elapsed = System.currentTimeMillis() - startTime.get();
-        lastSummary = String.format("Nodes: %d, Pruned: %d, Time: %dms, Solutions: %d", 
-                nodesVisited.get(), prunedCount.get(), elapsed, bestSolutions.size());
+        lastSummary = String.format("Nodes: %d, Pruned: %d, Time: %dms, Solutions: %d -> %d", 
+                nodesVisited.get(), prunedCount.get(), elapsed, bestSolutions.size(), finalSolutions.size());
         Log.d(UCourse_TAG, "求解结束: " + lastSummary);
         
-        return bestSolutions;
+        return finalSolutions;
+    }
+    
+    /**
+     * Check if solution 'sub' is a subset of solution 'sup'
+     */
+    private boolean isSubset(Solution sub, Solution sup) {
+        // If sub has more courses, it cannot be a subset
+        if (sub.courses.size() > sup.courses.size()) return false;
+        
+        // If sub has equal courses, we treat it as subset only if scores are lower?
+        // But duplicates are already removed.
+        // Let's assume strict subset check based on course IDs.
+        
+        Set<String> supIds = new HashSet<>();
+        for (Course c : sup.courses) supIds.add(c.id);
+        
+        for (Course c : sub.courses) {
+            if (!supIds.contains(c.id)) {
+                return false;
+            }
+        }
+        
+        // If we reach here, all courses in sub are in sup.
+        // If sizes are equal, they are identical (should be handled by duplicate check, but just in case)
+        // If sizes are different, sub is strict subset.
+        // However, we want to remove sub even if it's identical? 
+        // No, identical solutions should be kept (or rather, we shouldn't have them).
+        // If they are identical, i != j, so one will filter the other?
+        // If A subset B and B subset A (identical), both might be removed if we are not careful.
+        // We should only remove if sub is STRICT subset, OR if identical and index is larger (keep first).
+        
+        if (sub.courses.size() == sup.courses.size()) {
+             // Treat as subset (duplicate) only if total score is less or equal?
+             // Actually, if identical, they are subsets of each other.
+             // We need to break symmetry.
+             // Since bestSolutions is sorted by score, we prefer the earlier one.
+             // But here we are iterating i (sub) and j (sup).
+             // If i > j (sub is later in list), and they are identical, remove sub.
+             // If i < j (sub is earlier), keep sub? But sup is later?
+             // Wait, if they are identical, duplicate check in addSolution prevents this.
+             // So we only care about strict subset.
+             return false;
+        }
+        
+        return true;
     }
 
     /**
@@ -189,10 +282,11 @@ public class RecommendationSolver {
      * @param suffixSum 后缀和数组，用于估算剩余最大可能分数
      * @param bestSolutions 当前最优解集合
      * @param startTime 开始时间
+     * @param weight 当前节点的权重（用于进度计算）
      */
     private void dfs(int idx, List<Course> courses, List<Set<Long>> masks, Set<Long> occupied, 
                      List<Course> chosen, int currentScore, int[] suffixSum, 
-                     List<Solution> bestSolutions, AtomicLong startTime) {
+                     List<Solution> bestSolutions, AtomicLong startTime, double weight) {
         
         nodesVisited.incrementAndGet();
         
@@ -200,10 +294,14 @@ public class RecommendationSolver {
         if (nodesVisited.get() % 1000 == 0) {
             if (timeLimitMs > 0 && System.currentTimeMillis() - startTime.get() > timeLimitMs) {
                 timedOut = true;
+                currentProgress += weight;
                 return;
             }
         }
-        if (timedOut) return;
+        if (timedOut) {
+            currentProgress += weight;
+            return;
+        }
 
         // 强力剪枝：乐观估值
         // 如果 (当前分数 + 剩余所有课程的分数) <= 第K优解的分数，则无需继续搜索
@@ -214,6 +312,7 @@ public class RecommendationSolver {
             // 如果只能达到平局且方案更复杂，也可以剪枝
             if (maxPossibleScore < minScoreInBest) {
                 prunedCount.incrementAndGet();
+                currentProgress += weight;
                 return;
             }
         }
@@ -223,8 +322,11 @@ public class RecommendationSolver {
             if (!chosen.isEmpty()) {
                 addSolution(bestSolutions, new ArrayList<>(chosen), currentScore);
             }
+            currentProgress += weight;
             return;
         }
+
+        double halfWeight = weight * 0.5;
 
         // 分支1：尝试选择当前课程
         // 冲突检测
@@ -244,11 +346,13 @@ public class RecommendationSolver {
             
             // 递归下一层
             dfs(idx + 1, courses, masks, occupied, chosen, currentScore + courses.get(idx).interest, 
-                suffixSum, bestSolutions, startTime);
+                suffixSum, bestSolutions, startTime, halfWeight);
             
             // 回溯
             chosen.remove(chosen.size() - 1);
             for (Long slot : currentMask) occupied.remove(slot);
+        } else {
+            currentProgress += halfWeight;
         }
 
         // 分支2：不选择当前课程
@@ -258,11 +362,12 @@ public class RecommendationSolver {
             int maxPossibleWithoutCurrent = currentScore + suffixSum[idx + 1];
             int minScoreInBest = bestSolutions.get(bestSolutions.size() - 1).totalScore;
             if (maxPossibleWithoutCurrent < minScoreInBest) {
+                currentProgress += halfWeight;
                 return; // 剪枝：不选这门课肯定没戏
             }
         }
         
-        dfs(idx + 1, courses, masks, occupied, chosen, currentScore, suffixSum, bestSolutions, startTime);
+        dfs(idx + 1, courses, masks, occupied, chosen, currentScore, suffixSum, bestSolutions, startTime, halfWeight);
     }
 
     /**
@@ -273,39 +378,22 @@ public class RecommendationSolver {
         // 1. 质量过滤：允许单门课程的推荐
         // if (courses.size() < 1) return; 
 
-        // 2. 重复检测与子集检测
-        Set<String> newIds = new HashSet<>();
-        for(Course c : courses) newIds.add(c.id);
-
-        java.util.Iterator<Solution> it = best.iterator();
-        while (it.hasNext()) {
-            Solution s = it.next();
-            Set<String> existingIds = new HashSet<>();
-            for(Course c : s.courses) existingIds.add(c.id);
-
-            // 2.1 完全重复检测与相似度压缩
+        // 2. 重复检测：如果完全相同的课程组合已存在，则忽略
+        // 简单的O(K*N)检测，K很小所以没问题
+        for (Solution s : best) {
             if (s.totalScore == score && s.courses.size() == courses.size()) {
-                if (existingIds.containsAll(newIds)) return; // Totally same
-
-                // 相似度压缩：如果两个方案分数相同，且只有1门课程不同，则视为冗余方案
-                int overlap = 0;
-                for (Course c : courses) {
-                    if (existingIds.contains(c.id)) overlap++;
+                // 检查是否课程ID完全一致
+                boolean match = true;
+                Set<String> existingIds = new HashSet<>();
+                for(Course c : s.courses) existingIds.add(c.id);
+                
+                for(Course c : courses) {
+                    if(!existingIds.contains(c.id)) {
+                        match = false;
+                        break;
+                    }
                 }
-                if (overlap >= courses.size() - 1) {
-                     return; // 丢弃高度相似的同分方案
-                }
-            }
-
-            // 2.2 子集检测 (Subset Pruning)
-            // 如果新方案是现有方案的子集 (New < Existing)，则丢弃新方案
-            if (existingIds.containsAll(newIds)) {
-                return; // New is subset of Existing -> Reject New
-            }
-
-            // 如果现有方案是新方案的子集 (Existing < New)，则移除现有方案
-            if (newIds.containsAll(existingIds)) {
-                it.remove(); // Existing is subset of New -> Remove Existing
+                if (match) return; // 完全重复
             }
         }
 

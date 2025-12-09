@@ -16,7 +16,11 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="导入课程表" />
+            android:text="导入课程表"
+            android:backgroundTint="@color/colorPrimary"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
         <View
             android:layout_width="16dp"
@@ -29,7 +33,11 @@
             android:layout_height="wrap_content"
             android:text="设置第一周"
             android:drawableLeft="@drawable/calendar_check_24px"
-            android:drawablePadding="8dp" />
+            android:drawablePadding="8dp"
+            android:backgroundTint="@color/colorPrimary"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
     </LinearLayout>
 

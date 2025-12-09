@@ -3,7 +3,6 @@ package com.pku.or.ucourse;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Build;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -30,6 +29,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.core.view.ViewCompat;
 
 import com.pku.or.ucourse.home.Course;
 import com.pku.or.ucourse.home.HomeViewModel;
@@ -48,6 +48,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 结果页面，用于显示课程推荐方案
@@ -98,7 +100,10 @@ public class ResultFragment extends Fragment {
      * 生成推荐方案
      */
     private void generateRecommendations() {
-        // 1. 立即更新UI状态 (主线程)
+        final long overallStartTime = System.currentTimeMillis();
+        PerformanceLogger.logPerformancePoint("GENERATE_RECOMMENDATIONS", "按钮点击开始");
+        
+        // 清空之前的结果
         if (container != null) {
             container.removeAllViews();
         }
@@ -111,68 +116,33 @@ public class ResultFragment extends Fragment {
             progressBar.setProgress(0);
             progressBar.setVisibility(View.VISIBLE);
         }
-        
-        // 2. 延迟执行核心逻辑，确保UI有时间渲染进度条
-        if (container != null) {
-            container.postDelayed(this::processRecommendationsLogic, 50);
-        } else {
-            processRecommendationsLogic();
-        }
-    }
-
-    /**
-     * 处理推荐逻辑 (收集数据 -> 后台计算)
-     */
-    private void processRecommendationsLogic() {
-        final long overallStartTime = System.currentTimeMillis();
-        PerformanceLogger.logPerformancePoint("GENERATE_RECOMMENDATIONS", "逻辑处理开始");
         PerformanceLogger.logProgress("RECOMMENDATION_PROCESS", 0, 0);
 
-        // 收集数据：课程 (主线程)
-        List<Course> rawCourses = homeViewModel.courses.getValue();
-        final List<Course> tempCourses = rawCourses == null ? new ArrayList<>() : new ArrayList<>(rawCourses);
-
-        // 获取首周设置 (主线程)
-        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("ucourse_prefs", android.content.Context.MODE_PRIVATE);
-        final String firstWeekStr = prefs.getString("first_week_date", null);
-
-        PerformanceLogger.logPerformancePoint("COURSE_PROCESSING", "获取课程总数: " + tempCourses.size());
-
-        // 获取TimeFragment中的WeekTimeData (主线程)
-        long freeTimeStartTime = System.currentTimeMillis();
-        WeekTimeData freeTimes = null;
-        try {
-            TimeFragment tf = (TimeFragment) getActivity().getSupportFragmentManager().findFragmentByTag("time");
-            if (tf != null) {
-                freeTimes = tf.getCurrentWeekData();
-            } else {
-                // 尝试从SharedPreferences加载
-                android.content.SharedPreferences timePrefs = requireContext().getSharedPreferences("TimeTablePrefs", android.content.Context.MODE_PRIVATE);
-                String json = timePrefs.getString("week_data", null);
-                if (json != null) {
-                    freeTimes = new com.google.gson.Gson().fromJson(json, WeekTimeData.class);
-                }
-            }
-        } catch (Throwable _t) { /* ignore */ }
-        if (freeTimes == null) freeTimes = new WeekTimeData();
-        final WeekTimeData finalFreeTimes = freeTimes;
-        PerformanceLogger.logPerformancePoint("TIME_PROCESSING", "获取空闲时间完成 - 耗时: " + (System.currentTimeMillis() - freeTimeStartTime) + "ms");
-
-        // 运行求解器在后台线程
         final long startTime = System.currentTimeMillis();
         final int timeLimitMs = 20000; // 优化时间限制为20秒，更合理的估计
         
-        PerformanceLogger.logPerformancePoint("PROGRESS_THREAD", "准备启动进度更新线程");
-        // 启动进度更新线程，限制总时间为20秒
-        startProgressUpdateThread(startTime, timeLimitMs);
+        // 用于在线程间共享Solver实例
+        final AtomicReference<RecommendationSolver> solverRef = new AtomicReference<>();
         
-        PerformanceLogger.logPerformancePoint("SOLVER_THREAD", "准备启动后台求解线程");
+        // 立即启动进度更新线程，使用真实的求解器进度
+        startProgressUpdateThread(startTime, timeLimitMs, solverRef);
+
+        // 将所有耗时操作移至后台线程
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(() -> {
-            PerformanceLogger.logPerformancePoint("SOLVER_THREAD", "后台求解线程开始执行");
+            PerformanceLogger.logPerformancePoint("SOLVER_THREAD", "后台处理线程开始执行");
 
-            // Filter ended courses based on first week date (Background Thread)
+            // 1. 收集数据：课程 (原主线程逻辑移入后台)
+            List<Course> rawCourses = null;
+            if (homeViewModel != null && homeViewModel.courses != null) {
+                rawCourses = homeViewModel.courses.getValue();
+            }
+            List<Course> tempCourses = rawCourses == null ? new ArrayList<>() : new ArrayList<>(rawCourses);
+
+            // Filter ended courses based on first week date
             try {
+                android.content.SharedPreferences prefs = requireContext().getSharedPreferences("ucourse_prefs", android.content.Context.MODE_PRIVATE);
+                String firstWeekStr = prefs.getString("first_week_date", null);
                 if (firstWeekStr != null) {
                     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
                     java.util.Date firstWeekDate = sdf.parse(firstWeekStr);
@@ -222,7 +192,26 @@ public class ResultFragment extends Fragment {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
             final List<Course> courses = tempCourses;
+            PerformanceLogger.logPerformancePoint("COURSE_PROCESSING", "获取课程总数: " + courses.size());
+
+            // 2. 获取TimeFragment中的WeekTimeData
+            // 注意：getActivity()不能在后台线程直接调用，需要提前获取或使用Context
+            // 这里我们尝试直接读取SharedPreferences，避免UI操作
+            long freeTimeStartTime = System.currentTimeMillis();
+            WeekTimeData freeTimes = null;
+            try {
+                android.content.SharedPreferences prefs = requireContext().getSharedPreferences("TimeTablePrefs", android.content.Context.MODE_PRIVATE);
+                String json = prefs.getString("week_data", null);
+                if (json != null) {
+                    freeTimes = new com.google.gson.Gson().fromJson(json, WeekTimeData.class);
+                }
+            } catch (Throwable _t) { /* ignore */ }
+            if (freeTimes == null) freeTimes = new WeekTimeData();
+            final WeekTimeData finalFreeTimes = freeTimes;
+            PerformanceLogger.logPerformancePoint("TIME_PROCESSING", "获取空闲时间完成 - 耗时: " + (System.currentTimeMillis() - freeTimeStartTime) + "ms");
+
             
             // 筛选课程：排除没有课程名和没有课程时间的课程
             List<Course> filteredCourses = new ArrayList<>();
@@ -299,13 +288,60 @@ public class ResultFragment extends Fragment {
             // 记录求解器初始化时间
             long solverInitStartTime = System.currentTimeMillis();
             RecommendationSolver solver = new RecommendationSolver(finalCourses, mapping, finalFreeTimes, 10, timeLimitMs);
+            solverRef.set(solver); // Share solver instance for progress tracking
+            
             PerformanceLogger.logPerformancePoint("SOLVER_PROCESS", "求解器初始化完成 - 耗时: " + (System.currentTimeMillis() - solverInitStartTime) +
                     "ms");
             
             // 记录求解过程时间
             long solveStartTime = System.currentTimeMillis();
-            List<RecommendationSolver.Solution> solutions = solver.solve();
+            List<RecommendationSolver.Solution> rawSolutions = solver.solve();
             long solveEndTime = System.currentTimeMillis();
+            
+            // 过滤子集方案 (Subset Filtering)
+            // 如果方案A的所有课程ID集合是方案B的子集，且A的分数<=B (通常是<)，则A是多余的。
+            // 由于求解器返回的方案通常按分数降序排列，我们保留分数高的超集。
+            List<RecommendationSolver.Solution> solutions = new ArrayList<>();
+            if (rawSolutions != null) {
+                // 先按分数降序排序 (Solver应该已经排好了，但为了保险)
+                Collections.sort(rawSolutions, (a, b) -> Integer.compare(b.totalScore, a.totalScore));
+                
+                for (int i = 0; i < rawSolutions.size(); i++) {
+                    RecommendationSolver.Solution candidate = rawSolutions.get(i);
+                    boolean isSubset = false;
+                    Set<String> candidateIds = new HashSet<>();
+                    for(Course c : candidate.courses) candidateIds.add(c.id);
+                    
+                    for (int j = 0; j < rawSolutions.size(); j++) {
+                        if (i == j) continue;
+                        RecommendationSolver.Solution other = rawSolutions.get(j);
+                        
+                        // 如果candidate是other的真子集 (即所有candidate的课程都在other中，且other有更多课程)
+                        // 或者如果完全相同 (去重)
+                        Set<String> otherIds = new HashSet<>();
+                        for(Course c : other.courses) otherIds.add(c.id);
+                        
+                        if (otherIds.containsAll(candidateIds)) {
+                            // candidate is subset or equal
+                            if (otherIds.size() > candidateIds.size()) {
+                                isSubset = true; // Strict subset
+                                break;
+                            } else if (otherIds.size() == candidateIds.size()) {
+                                // Equal sets. Keep only the one with lower index (first one encountered)
+                                if (j < i) {
+                                    isSubset = true; // Duplicate
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (!isSubset) {
+                        solutions.add(candidate);
+                    }
+                }
+            }
+
             PerformanceLogger.logPerformancePoint("SOLVER_PROCESS", "求解算法完成 - 耗时: " + (solveEndTime - solveStartTime) + "ms, 生成方案数: " + (solutions != null ? solutions.size() : 0));
             
             // 记录课程还原时间
@@ -336,6 +372,18 @@ public class ResultFragment extends Fragment {
 
             // 在主线程更新UI
             new Handler(Looper.getMainLooper()).post(() -> {
+                // Stop progress thread immediately
+                if (progressThread != null) {
+                    progressThread.interrupt();
+                    progressThread = null;
+                }
+
+                // Show 100% then hide
+                if (progressBar != null) {
+                    progressBar.setProgress(100);
+                    progressBar.postDelayed(() -> progressBar.setVisibility(View.GONE), 200);
+                }
+
                final long uiUpdateStartTime = System.currentTimeMillis();
                 PerformanceLogger.logPerformancePoint("UI_UPDATE", "开始UI更新");
 
@@ -358,22 +406,7 @@ public class ResultFragment extends Fragment {
                 long completeTime = System.currentTimeMillis();
                 PerformanceLogger.logProgress("RECOMMENDATION_PROCESS", 100, (completeTime - startTime));
                 
-                // 停止进度更新线程
-                if (progressThread != null) {
-                    progressThread.interrupt();
-                    progressThread = null;
-                }
-                
-                // 设置进度条为100%并隐藏
-                if (progressBar != null) {
-                    progressBar.setProgress(100);
-                    // 添加短暂延迟再隐藏，让用户看到100%完成状态
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (progressBar != null) {
-                            progressBar.setVisibility(View.GONE);
-                        }
-                    }, 100); // 仅延迟100ms
-                }
+                // 此处不隐藏进度条，等待卡片完全渲染后再隐藏
                 
                 // 设置按钮为完成状态
                 if (btnGenerate != null) {
@@ -424,7 +457,7 @@ public class ResultFragment extends Fragment {
     /**
      * 启动进度更新线程，实时更新进度条
      */
-    private void startProgressUpdateThread(final long startTime, final int timeLimitMs) {
+    private void startProgressUpdateThread(final long startTime, final int timeLimitMs, final AtomicReference<RecommendationSolver> solverRef) {
         PerformanceLogger.logPerformancePoint("PROGRESS_THREAD", "进度更新线程启动，时间限制设置为: " + timeLimitMs + "ms");
         
         // 如果已有进度线程在运行，先中断它
@@ -434,35 +467,45 @@ public class ResultFragment extends Fragment {
         
         progressThread = new Thread(() -> {
             try {
-                int lastProgress = 0;
-                while (!Thread.interrupted()) {
-                    final long elapsed = System.currentTimeMillis() - startTime;
-                    // 优化的进度计算算法：使用指数函数使进度前期增加更快，避免用户等待感
-                    float progressRatio;
-                    if (elapsed < timeLimitMs * 0.5f) {
-                        // 前50%时间内，进度增长更快
-                        progressRatio = 0.6f * (float)(1 - Math.exp(-1.5f * elapsed / (timeLimitMs * 0.5f)));
-                    } else {
-                        // 后50%时间内，逐渐接近99%
-                        progressRatio = 0.6f + 0.39f * (elapsed - timeLimitMs * 0.5f) / (timeLimitMs * 0.5f);
-                    }
-                    
-                    final int progress = Math.round(progressRatio * 100);
-                    
-                    // 记录进度变化
-                    if (progress != lastProgress) {
-                        PerformanceLogger.logProgress("RECOMMENDATION_PROCESS", progress, elapsed);
-                        lastProgress = progress;
-                    }
-                    
-                    // 在主线程更新进度条
-                    requireActivity().runOnUiThread(() -> {
-                        if (progressBar != null) {
-                            progressBar.setProgress(progress);
+                // Phase 1: Waiting for solver initialization (0-5%)
+                int initProgress = 0;
+                while (solverRef.get() == null && !Thread.interrupted()) {
+                    if (initProgress < 5) {
+                        initProgress++;
+                        final int p = initProgress;
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                if (progressBar != null) {
+                                    progressBar.setVisibility(View.VISIBLE);
+                                    progressBar.setProgress(p);
+                                }
+                            });
                         }
-                    });
+                    }
+                    Thread.sleep(100);
+                }
+
+                // Phase 2: Solver running (5-99%)
+                while (!Thread.interrupted()) {
+                    RecommendationSolver solver = solverRef.get();
+                    if (solver != null) {
+                        int realProgress = solver.getProgress(); // 0-100
+                        // Map 0-100 to 5-99
+                        int displayProgress = 5 + (int)(realProgress * 0.94);
+                        if (displayProgress > 99) displayProgress = 99;
+                        
+                        final int progress = displayProgress;
+                        
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                if (progressBar != null) {
+                                    progressBar.setProgress(progress);
+                                }
+                            });
+                        }
+                    }
                     
-                    Thread.sleep(50); // 每50ms更新一次，使进度条更流畅
+                    Thread.sleep(50); 
                 }
             } catch (InterruptedException e) {
                 // 线程中断，正常退出
@@ -548,19 +591,6 @@ public class ResultFragment extends Fragment {
         tvTitle.setText("方案 " + rank);
         tvScore.setText(String.valueOf(s.totalScore));
         
-        // 显式设置DIFF按钮的默认背景和文字颜色
-        if (btnDiff != null) {
-            // 使用setBackgroundColor直接设置白色背景，确保不受主题影响
-            btnDiff.setBackgroundColor(Color.WHITE);
-            btnDiff.setText("DIFF");
-            btnDiff.setTextColor(Color.BLACK); // Black text
-            // 清除可能影响的背景色滤镜
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                btnDiff.setBackgroundTintList(null);
-                btnDiff.setBackgroundTintMode(null);
-            }
-        }
-        
         // 初始状态下隐藏 Diff 摘要
         if (tvDiff != null) {
             tvDiff.setVisibility(View.GONE);
@@ -591,27 +621,30 @@ public class ResultFragment extends Fragment {
                             RecommendationSolver.Solution target = targets[which];
                             CharSequence diffText = calculateDiff(s, target);
                             
-                            // 更新 Diff 摘要
+                            // 更新 Diff 摘要 - 用户要求移除此区域 (Area 1)
+                            /* 
                             if (tvDiff != null) {
                                 tvDiff.setText(diffText);
-                                // User requested to hide Region 1 (Diff Text)
-                                // tvDiff.setVisibility(View.VISIBLE);
+                                tvDiff.setVisibility(View.VISIBLE);
+                            }
+                            */
+                            if (tvDiff != null) {
                                 tvDiff.setVisibility(View.GONE);
                             }
                             
                             // 切换到恢复模式
-                            btnDiff.setText("RESTORE");
-                            // 设置更明显的高亮蓝色背景，确保清晰可见
-                            btnDiff.setBackgroundColor(0xFF2196F3); // Standard Android Blue (high contrast)
-                            btnDiff.setTextColor(Color.WHITE); // White text
-                            // 确保清除所有可能影响的背景色滤镜
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                                btnDiff.setBackgroundTintList(null);
-                                btnDiff.setBackgroundTintMode(null);
-                            }
-                            // 强制刷新按钮显示
-                            btnDiff.invalidate();
-                            btnDiff.requestLayout();
+                            btnDiff.setText("REST");
+                            // 使用白色字体配合淡蓝色背景
+                            btnDiff.setTextColor(android.graphics.Color.WHITE);
+                            // 清除背景Tint，避免主题accent影响淡蓝色
+                            try { ViewCompat.setBackgroundTintList(btnDiff, null); } catch (Throwable _t) {}
+                            // 保存Padding防止背景重置导致变形
+                            int pLeft = btnDiff.getPaddingLeft();
+                            int pTop = btnDiff.getPaddingTop();
+                            int pRight = btnDiff.getPaddingRight();
+                            int pBottom = btnDiff.getPaddingBottom();
+                            btnDiff.setBackgroundResource(R.drawable.bg_diff_button_restore);
+                            btnDiff.setPadding(pLeft, pTop, pRight, pBottom);
                             
                             // 构建 Diff 数据
                             Map<String, Integer> diffStatus = new HashMap<>();
@@ -652,14 +685,15 @@ public class ResultFragment extends Fragment {
                             btnDiff.setOnClickListener(v2 -> {
                                 // 恢复初始状态
                                 btnDiff.setText("DIFF");
-                                // 恢复白色背景
-                                btnDiff.setBackgroundColor(Color.WHITE);
-                                btnDiff.setTextColor(Color.BLACK); // Black text
-                                // 清除可能影响的背景色滤镜
-                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                                    btnDiff.setBackgroundTintList(null);
-                                    btnDiff.setBackgroundTintMode(null);
-                                }
+                                // 保存Padding
+                                int pL = btnDiff.getPaddingLeft();
+                                int pT = btnDiff.getPaddingTop();
+                                int pR = btnDiff.getPaddingRight();
+                                int pB = btnDiff.getPaddingBottom();
+                                btnDiff.setBackgroundResource(0); // 透明背景
+                                btnDiff.setPadding(pL, pT, pR, pB);
+                                btnDiff.setTextColor(0xFF666666);
+                                try { ViewCompat.setBackgroundTintList(btnDiff, null); } catch (Throwable _t) {}
                                 if (tvDiff != null) tvDiff.setVisibility(View.GONE);
                                 
                                 // 恢复原始课程列表
@@ -748,11 +782,6 @@ public class ResultFragment extends Fragment {
                     boolean exists = false;
                     for (Course xc : seg.courses) {
                         if (xc.id.equals(course.id)) { exists = true; break; }
-                        // 额外检查：如果课程名称相同且在同一时间段，视为重复（避免数据源中的重复项）
-                        if (xc.title != null && course.title != null && xc.title.trim().equals(course.title.trim())) {
-                            exists = true;
-                            break;
-                        }
                     }
                     if (!exists) seg.courses.add(course);
                 }
@@ -988,14 +1017,14 @@ public class ResultFragment extends Fragment {
             if (status == 1) { // Added
                 holder.tvCourseName.setText("+ " + title);
                 holder.tvCourseName.setTextColor(0xFF4CAF50); // Green
-                holder.tvCourseName.setShadowLayer(12, 0, 0, 0xFFFFFFFF); // White glow
+                holder.tvCourseName.setShadowLayer(8, 0, 0, android.graphics.Color.WHITE);
             } else if (status == 2) { // Removed
                 holder.tvCourseName.setText("- " + title);
                 holder.tvCourseName.setTextColor(0xFFFF5252); // Red
-                holder.tvCourseName.setShadowLayer(12, 0, 0, 0xFFFFFFFF); // White glow
+                holder.tvCourseName.setShadowLayer(8, 0, 0, android.graphics.Color.WHITE);
             } else {
                 holder.tvCourseName.setText(title);
-                holder.tvCourseName.setTextColor(0xFFFFFFFF); // White
+                holder.tvCourseName.setTextColor(android.graphics.Color.WHITE); // White
                 holder.tvCourseName.setShadowLayer(0, 0, 0, 0);
             }
             

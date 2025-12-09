@@ -1,7 +1,9 @@
 package com.pku.or.ucourse.home;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.Color;
 import androidx.transition.AutoTransition;
 import androidx.transition.TransitionManager;
@@ -72,18 +74,23 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         boolean allZero = true;
         boolean allTen = true;
         boolean hasTen = false;
+        int tenCount = 0;
         
         void update(Course c) {
             if (c == null) return;
             if (c.interest > 0) allZero = false;
             if (c.interest < 10) allTen = false;
-            if (c.interest == 10) hasTen = true;
+            if (c.interest == 10) {
+                hasTen = true;
+                tenCount++;
+            }
         }
         
         void merge(HeaderStats other) {
             if (!other.allZero) allZero = false;
             if (!other.allTen) allTen = false;
             if (other.hasTen) hasTen = true;
+            tenCount += other.tenCount;
         }
     }
     
@@ -120,9 +127,18 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         String title;    // 显示标题
         Course course;   // 课程对象（仅课程类型时有值）
         String parentId; // 父ID：Sheet的父=fileId, 课程的父=fileId|sheetName
-        String fileId;   // 文件ID（仅文件和Sheet类型时有值）
-        String sheetName; // Sheet名称（仅Sheet类型时有值）
-        String sheetFileId; // Sheet所属的文件ID（仅Sheet类型时有值）
+        int styleState;  // 样式状态（仅Header使用）：10=全10分，0=全0分，-1=单个10分，5=普通
+    }
+
+    /**
+     * Helper to calculate style state from stats
+     */
+    private int calculateStyleState(HeaderStats stats) {
+        if (stats == null) return 5;
+        if (stats.allTen) return 10;
+        if (stats.allZero) return 0;
+        if (stats.tenCount == 1) return -1;
+        return 5;
     }
 
     /**
@@ -139,6 +155,20 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
     
     /**
+     * Get the secondary grouping key for a course (Unit -> Sheet -> unknown)
+     */
+    private String getSecondaryGroupId(Course c) {
+        String s = c.unit;
+        if (s == null || s.trim().isEmpty()) {
+            s = c.sheetName;
+        }
+        if (s == null || s.trim().isEmpty()) {
+            s = "<unknown>";
+        }
+        return s;
+    }
+
+    /**
      * 从原始课程列表构建扁平化的显示列表
      * 按文件->Sheet->课程的层级结构组织数据
      * 根据展开状态决定是否显示子项
@@ -152,11 +182,13 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         // === 重建统计信息 ===
         statsMap.clear();
         for (Course c : rawCourses) {
-            String fileId = c.fileId == null ? "<nofile>" : c.fileId;
-            String sheetId = fileId + "|" + (c.sheetName == null ? "<nosheet>" : c.sheetName);
+            String f = c.fileId == null ? "<nofile>" : c.fileId;
             
-            if (!statsMap.containsKey(fileId)) statsMap.put(fileId, new HeaderStats());
-            statsMap.get(fileId).update(c);
+            String secondaryKey = getSecondaryGroupId(c);
+            String sheetId = f + "|" + secondaryKey;
+            
+            if (!statsMap.containsKey(f)) statsMap.put(f, new HeaderStats());
+            statsMap.get(f).update(c);
             
             if (!statsMap.containsKey(sheetId)) statsMap.put(sheetId, new HeaderStats());
             statsMap.get(sheetId).update(c);
@@ -167,7 +199,9 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         Map<String, Map<String, SheetInfo>> byFile = new LinkedHashMap<>();
         for (Course c : rawCourses) {
             String f = c.fileId == null ? "<nofile>" : c.fileId;
-            String s = c.sheetName == null ? "<nosheet>" : c.sheetName;
+            
+            String s = getSecondaryGroupId(c);
+            
             byFile.putIfAbsent(f, new LinkedHashMap<>());
             Map<String, SheetInfo> fm = byFile.get(f);
             if (!fm.containsKey(s)) {
@@ -191,7 +225,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             fileItem.type = TYPE_FILE;
             fileItem.id = fileId;
             fileItem.title = fileId;
-            fileItem.fileId = fileId;
+            fileItem.styleState = calculateStyleState(statsMap.get(fileId));
             out.add(fileItem);
             
             Map<String, SheetInfo> sheets = fe.getValue();
@@ -214,9 +248,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     sheetItem.type = TYPE_SHEET;
                     sheetItem.id = sheetId;
                     sheetItem.title = sheetName;
-                    sheetItem.sheetName = sheetName;
-                    sheetItem.sheetFileId = fileId;
                     sheetItem.parentId = fileId;
+                    sheetItem.styleState = calculateStyleState(statsMap.get(sheetId));
                     out.add(sheetItem);
                     
                     // 只有当Sheet展开时才显示课程
@@ -453,12 +486,9 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             
             // set subtle grouping background based on parent sheet id to save horizontal space
             if (it.parentId != null) {
-                // derive a stable but simple hash to alternate color per sheet
-                int h = Math.abs(it.parentId.hashCode());
-                boolean alt = (h % 2) == 0;
-                Context ctx = vh.itemView.getContext();
-                int color = ContextCompat.getColor(ctx, alt ? R.color.sheet_group_bg_even : R.color.sheet_group_bg_odd);
-                vh.itemView.setBackgroundColor(color);
+                // derived a stable but simple hash to alternate color per sheet
+                // Removed per user request to eliminate gray area
+                vh.itemView.setBackgroundColor(ContextCompat.getColor(vh.itemView.getContext(), android.R.color.transparent));
             } else {
                 vh.itemView.setBackgroundColor(ContextCompat.getColor(vh.itemView.getContext(), android.R.color.transparent));
             }
@@ -478,7 +508,6 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             
             // Render interest score fill and text
             renderInterestSegments(vh, c.interest);
-            applyCourseStyle(vh, c);
         }
     }
 
@@ -798,20 +827,9 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             // For file and sheet rows, identity is sufficient (title rarely changes). For course rows compare key fields.
             // Also compare stats for headers to trigger style updates
             if (a.type != TYPE_COURSE) {
-                // Header rows: check if title or stats changed
-                // Stats are stored in the adapter's statsMap, but here we can check if we should refresh.
-                // Since statsMap is updated before diff calculation, and onBind reads from it,
-                // we should consider content different if stats might have changed.
-                // However, stats are derived from underlying courses.
-                // Simplest way: always return false for headers if we want to ensure style updates, 
-                // but that's inefficient.
-                // Better: rely on 'notifyItemChanged' with payload from partial updates, 
-                // or just compare the relevant stat properties if we had them in Item.
-                // For now, let's assume if title is same, content is same, UNLESS we force update elsewhere.
-                // BUT, to support real-time header styling updates during swipe, we need to be careful.
-                // Actually, swipe updates are handled via direct view manipulation or notifyItemChanged(payload).
-                // So here standard equality is fine.
-                return java.util.Objects.equals(a.title, b.title);
+                // Header rows: check title and styleState to ensure visual updates
+                if (!safeEquals(a.title, b.title)) return false;
+                return a.styleState == b.styleState;
             }
 
             if (a.type == TYPE_COURSE && b.type == TYPE_COURSE) {
@@ -917,32 +935,72 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         }
 
         int color = ContextCompat.getColor(ctx, defaultColorRes);
+        int titleColor = ContextCompat.getColor(ctx, R.color.header_text_color);
+        int typeFaceStyle = Typeface.BOLD; // Default Bold
+        int shadowColor = 0; // Default no shadow
         
         if (stats != null) {
             if (stats.allZero) {
-                // Rule A: Gray: All courses 0 -> Gray background, no shadow
+                // Rule A: Gray: All courses 0 -> Gray background, Gray Text, Normal Weight
                 rootView.setBackgroundResource(R.drawable.bg_item_card);
-                setCardLayerColor(rootView, 0, Color.parseColor("#EEEEEE"));
+                setCardBackground(rootView, Color.parseColor("#EEEEEE"));
+                titleColor = Color.parseColor("#9E9E9E");
+                typeFaceStyle = Typeface.NORMAL;
             } else if (stats.allTen) {
-                // Rule B: Bright Glow: All 10 -> bg_card_glow_10
-                // Glow drawable has glow at layer 0, background at layer 1
+                // Rule B: Bright Glow: All 10 -> bg_card_glow_10, Yellow Glow Text
                 rootView.setBackgroundResource(R.drawable.bg_card_glow_10);
-                setCardLayerColor(rootView, 1, color);
-            } else if (stats.hasTen) {
-                // Rule E: Faint Shadow: Has 10 but not all 10 -> bg_card_glow_faint
-                // Faint glow drawable has glow at layer 0, background at layer 1
+                // REMOVED setCardBackground(rootView, color); because it overwrites the glow layer (layer 0)
+                // Instead, we ensure the background layer (layer 1) is correct if needed, 
+                // but bg_card_glow_10 already defaults to background_color.
+                
+                shadowColor = Color.parseColor("#FFD700");
+                
+                // Ensure glow layers are visible - FIX for glow disappearance
+                try {
+                    Drawable bg = rootView.getBackground();
+                    if (bg != null) {
+                        bg = bg.mutate(); // Fix: Mutate to avoid shared state issues
+                        if (bg instanceof LayerDrawable) {
+                            LayerDrawable ld = (LayerDrawable) bg;
+                            for (int i = 0; i < ld.getNumberOfLayers(); i++) {
+                                Drawable layer = ld.getDrawable(i);
+                                if (layer != null) {
+                                    layer.setAlpha(255);
+                                    // Force redraw to ensure glow is visible
+                                    layer.invalidateSelf();
+                                }
+                            }
+                        }
+                        // Force the view to redraw with the new background
+                        rootView.invalidate();
+                    }
+                } catch (Throwable _t) {}
+            } else if (stats.tenCount == 1) {
+                // Rule E: Faint Shadow: Single 10 (and not all 10) -> bg_card_glow_faint, Bold Text
                 rootView.setBackgroundResource(R.drawable.bg_card_glow_faint);
-                setCardLayerColor(rootView, 1, color);
+                setCardBackground(rootView, color);
             } else {
-                // Rule D: No 10, not all 0 -> No shadow (Standard)
+                // Rule D: Standard -> Bold Text
                 rootView.setBackgroundResource(R.drawable.bg_item_card);
-                setCardLayerColor(rootView, 0, color);
+                setCardBackground(rootView, color);
             }
         } else {
             // Default
             rootView.setBackgroundResource(R.drawable.bg_item_card);
-            setCardLayerColor(rootView, 0, color);
+            setCardBackground(rootView, color);
         }
+        
+        // Apply text styling if possible
+        try {
+             // Find TextViews inside the rootView
+             TextView tvTitle = rootView.findViewById(R.id.tv_title);
+             if (tvTitle != null) {
+                 tvTitle.setTextColor(titleColor);
+                 tvTitle.setTypeface(null, typeFaceStyle);
+                 // Remove text shadow effect
+                 tvTitle.setShadowLayer(0, 0, 0, 0);
+             }
+        } catch (Throwable _t) {}
         
         // Reset progress bar level to 0 for headers (remove green bar)
         try {
@@ -971,16 +1029,45 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         float elevation = 0f;
         int titleColor = ContextCompat.getColor(ctx, R.color.header_text_color);
         int metaColor = ContextCompat.getColor(ctx, R.color.text_secondary);
+        int typeFaceStyle = Typeface.BOLD;
+        int shadowColor = 0;
         
         if (c != null) {
             if (c.interest == 10) {
                 // Use special glow drawable
                 rootView.setBackgroundResource(R.drawable.bg_card_glow_10);
                 elevation = 0f; // Glow is in the drawable
+                shadowColor = Color.parseColor("#FFD700");
                 
                 // Reset outline provider to default as we don't need clipping anymore
                 rootView.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
                 rootView.setClipToOutline(false);
+                
+                // Ensure all layers of the glow drawable are fully visible - FIX for initial glow
+                try {
+                    Drawable bg = rootView.getBackground();
+                    if (bg != null) {
+                        bg = bg.mutate(); // Fix: Mutate to avoid shared state issues
+                        if (bg instanceof LayerDrawable) {
+                            LayerDrawable ld = (LayerDrawable) bg;
+                            // Set alpha for all layers to ensure glow is visible
+                            for (int i = 0; i < ld.getNumberOfLayers(); i++) {
+                                Drawable layer = ld.getDrawable(i);
+                                if (layer != null) {
+                                    layer.setAlpha(255);
+                                    layer.setVisible(true, false); // Ensure visible
+                                    // Force redraw to ensure glow is visible on app launch
+                                    layer.invalidateSelf();
+                                }
+                            }
+                        }
+                        // Force the view to redraw with the new background
+                        rootView.invalidate();
+                        rootView.requestLayout(); // Request layout to ensure proper sizing
+                    }
+                } catch (Throwable _t) {
+                    // Ignore errors
+                }
             } else {
                 // Standard card
                 rootView.setBackgroundResource(R.drawable.bg_item_card);
@@ -989,13 +1076,19 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     // Gray text for 0 score
                     titleColor = Color.parseColor("#9E9E9E"); // Lighter gray
                     metaColor = Color.parseColor("#BDBDBD");
+                    typeFaceStyle = Typeface.NORMAL;
                 }
                 rootView.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
                 rootView.setClipToOutline(false);
             }
             
-            // Update text colors
-            if (vh.tvTitle != null) vh.tvTitle.setTextColor(titleColor);
+            // Update text colors and styles
+            if (vh.tvTitle != null) {
+                vh.tvTitle.setTextColor(titleColor);
+                vh.tvTitle.setTypeface(null, typeFaceStyle);
+                // Remove text shadow effect
+                vh.tvTitle.setShadowLayer(0, 0, 0, 0);
+            }
             if (vh.tvMeta != null) vh.tvMeta.setTextColor(metaColor);
             
             // Update progress bar immediately
@@ -1054,10 +1147,29 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 rootView.setBackgroundResource(R.drawable.bg_card_glow_10);
                 rootView.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
                 rootView.setClipToOutline(false);
-                // Normal text
+                
+                // Ensure glow layers are visible
+                try {
+                    Drawable bg = rootView.getBackground();
+                    if (bg != null) bg = bg.mutate(); // Fix: Mutate
+                    if (bg instanceof LayerDrawable) {
+                        LayerDrawable ld = (LayerDrawable) bg;
+                        for (int i = 0; i < ld.getNumberOfLayers(); i++) {
+                            Drawable layer = ld.getDrawable(i);
+                            if (layer != null) layer.setAlpha(255);
+                        }
+                    }
+                } catch (Throwable _t) {}
+
+                // Normal text, Bold, Yellow Glow
                 int titleColor = ContextCompat.getColor(ctx, R.color.header_text_color);
                 int metaColor = ContextCompat.getColor(ctx, R.color.text_secondary);
-                if (holder.tvTitle != null) holder.tvTitle.setTextColor(titleColor);
+                if (holder.tvTitle != null) {
+                    holder.tvTitle.setTextColor(titleColor);
+                    holder.tvTitle.setTypeface(null, Typeface.BOLD);
+                    // Remove text shadow effect
+                    holder.tvTitle.setShadowLayer(0, 0, 0, 0);
+                }
                 if (holder.tvMeta != null) holder.tvMeta.setTextColor(metaColor);
             } else {
                 rootView.setBackgroundResource(R.drawable.bg_item_card);
@@ -1065,16 +1177,24 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 rootView.setClipToOutline(false);
                 
                 if (score == 0) {
-                    // Gray text
+                    // Gray text, Normal weight
                     int titleColor = Color.parseColor("#9E9E9E");
                     int metaColor = Color.parseColor("#BDBDBD");
-                    if (holder.tvTitle != null) holder.tvTitle.setTextColor(titleColor);
+                    if (holder.tvTitle != null) {
+                        holder.tvTitle.setTextColor(titleColor);
+                        holder.tvTitle.setTypeface(null, Typeface.NORMAL);
+                        holder.tvTitle.setShadowLayer(0, 0, 0, 0);
+                    }
                     if (holder.tvMeta != null) holder.tvMeta.setTextColor(metaColor);
                 } else {
-                    // Normal text
+                    // Normal text, Bold
                     int titleColor = ContextCompat.getColor(ctx, R.color.header_text_color);
                     int metaColor = ContextCompat.getColor(ctx, R.color.text_secondary);
-                    if (holder.tvTitle != null) holder.tvTitle.setTextColor(titleColor);
+                    if (holder.tvTitle != null) {
+                        holder.tvTitle.setTextColor(titleColor);
+                        holder.tvTitle.setTypeface(null, Typeface.BOLD);
+                        holder.tvTitle.setShadowLayer(0, 0, 0, 0);
+                    }
                     if (holder.tvMeta != null) holder.tvMeta.setTextColor(metaColor);
                 }
             }
@@ -1085,31 +1205,77 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             // Header (File or Sheet)
             int defaultColorRes = (type == TYPE_SHEET) ? R.color.sheet_row_bg : R.color.background_color;
             int color = ContextCompat.getColor(ctx, defaultColorRes);
+            int titleColor = ContextCompat.getColor(ctx, R.color.header_text_color);
             
             if (score == 10) {
                 // All 10 -> Glow
                 rootView.setBackgroundResource(R.drawable.bg_card_glow_10);
-                // Glow drawable has glow at layer 0, background at layer 1
+                
+                // Ensure glow layers are visible
+                try {
+                    Drawable bg = rootView.getBackground();
+                    if (bg != null) bg = bg.mutate(); // Fix: Mutate
+                    if (bg instanceof LayerDrawable) {
+                        LayerDrawable ld = (LayerDrawable) bg;
+                        for (int i = 0; i < ld.getNumberOfLayers(); i++) {
+                            Drawable layer = ld.getDrawable(i);
+                            if (layer != null) layer.setAlpha(255);
+                        }
+                    }
+                } catch (Throwable _t) {}
+                
                 setCardLayerColor(rootView, 1, color);
+                // Text: Bold, Yellow Glow
+                if (holder.tvTitle != null) {
+                    holder.tvTitle.setTextColor(titleColor);
+                    holder.tvTitle.setTypeface(null, Typeface.BOLD);
+                    // Remove text shadow effect
+                    holder.tvTitle.setShadowLayer(0, 0, 0, 0);
+                }
             } else if (score == 0) {
                 // All 0 -> Gray
                 rootView.setBackgroundResource(R.drawable.bg_item_card);
-                // Standard card has background at layer 0
                 setCardLayerColor(rootView, 0, Color.parseColor("#EEEEEE"));
+                // Text: Gray, Normal
+                if (holder.tvTitle != null) {
+                    holder.tvTitle.setTextColor(Color.parseColor("#9E9E9E"));
+                    holder.tvTitle.setTypeface(null, Typeface.NORMAL);
+                    holder.tvTitle.setShadowLayer(0, 0, 0, 0);
+                }
             } else if (score == -1) {
-                // Mixed with 10 -> Faint Glow
+                // Single 10 -> Faint Glow
                 rootView.setBackgroundResource(R.drawable.bg_card_glow_faint);
-                // Faint glow drawable has glow at layer 0, background at layer 1
-                setCardLayerColor(rootView, 1, color);
+                setCardLayerColor(rootView, 0, color);
+                // Text: Bold, Normal Color (No Yellow Glow)
+                if (holder.tvTitle != null) {
+                    holder.tvTitle.setTextColor(titleColor);
+                    holder.tvTitle.setTypeface(null, Typeface.BOLD);
+                    holder.tvTitle.setShadowLayer(0, 0, 0, 0);
+                }
             } else {
                 // Mixed -> Standard
-                if (type == TYPE_SHEET) {
-                    rootView.setBackgroundResource(R.drawable.bg_sheet_card);
+                // If score is -1, it means mixed but not dragging?
+                // But during drag, score is usually 0..10.
+                // However, updateHeaderStyleForDrag calculates -1 for single 10.
+                if (score == -1) {
+                     // Single 10 -> Faint Glow
+                     rootView.setBackgroundResource(R.drawable.bg_card_glow_faint);
+                     setCardLayerColor(rootView, 0, color);
                 } else {
-                    rootView.setBackgroundResource(R.drawable.bg_item_card);
+                     if (type == TYPE_SHEET) {
+                         rootView.setBackgroundResource(R.drawable.bg_sheet_card);
+                     } else {
+                         rootView.setBackgroundResource(R.drawable.bg_item_card);
+                     }
+                     setCardLayerColor(rootView, 0, color);
                 }
-                // Standard/Sheet card has background at layer 0
-                setCardLayerColor(rootView, 0, color);
+                
+                // Text: Normal Color, Bold
+                if (holder.tvTitle != null) {
+                    holder.tvTitle.setTextColor(titleColor);
+                    holder.tvTitle.setTypeface(null, Typeface.BOLD);
+                    holder.tvTitle.setShadowLayer(0, 0, 0, 0);
+                }
             }
             
             // Reset header progress bar (always 0)
@@ -1137,9 +1303,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     /**
      * Update header style based on a drag delta applied to all its children.
      * This calculates the hypothetical state of children and updates the header visual.
-     * Also updates the parent File header if the dragged item is a Sheet.
      */
-    public void updateHeaderStyleForDrag(RecyclerView rv, RecyclerView.ViewHolder vh, float delta) {
+    public void updateHeaderStyleForDrag(RecyclerView.ViewHolder vh, float delta) {
         if (vh == null) return;
         int pos = vh.getAdapterPosition();
         if (pos == RecyclerView.NO_POSITION) return;
@@ -1149,29 +1314,31 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         if (item.type == TYPE_COURSE) return;
         
         String fileId = null;
-        String sheetName = null;
+        String secondaryKey = null;
         
         if (item.type == TYPE_SHEET) {
-             fileId = item.sheetFileId;
-             sheetName = item.sheetName;
+             // Sheet的id格式为fileId|secondaryKey
+             String[] parts = item.id.split("\\|");
+             if (parts.length >= 2) {
+                 fileId = parts[0];
+                 secondaryKey = parts[1];
+             }
         } else if (item.type == TYPE_FILE) {
-             fileId = item.fileId;
+             // File的id就是fileId
+             fileId = item.id;
         }
         
-        if (fileId == null) return;
-        
-        // 1. Update the dragged header itself
         // Calculate stats based on rawCourses
         boolean allZero = true;
         boolean allTen = true;
-        boolean hasTen = false;
+        int tenCount = 0;
         boolean hasAny = false;
         
         for (Course c : rawCourses) {
              boolean match = false;
              if (item.type == TYPE_SHEET) {
                  match = (c.fileId != null && c.fileId.equals(fileId)) && 
-                         (c.sheetName != null && c.sheetName.equals(sheetName));
+                         (getSecondaryGroupId(c).equals(secondaryKey));
              } else {
                  match = (c.fileId != null && c.fileId.equals(fileId));
              }
@@ -1182,63 +1349,22 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                  float newScore = Math.max(0, Math.min(10, c.interest + delta));
                  
                  // Use epsilon for float comparison
-                 if (newScore < 9.9f) allTen = false;
+                 if (newScore < 9.5f) allTen = false;
                  if (newScore > 0.1f) allZero = false;
-                 if (newScore >= 9.9f) hasTen = true;
+                 if (newScore >= 9.5f) tenCount++;
              }
         }
         
-        if (hasAny) {
-            // Determine state code
-            int stateScore;
-            if (allTen) stateScore = 10;
-            else if (allZero) stateScore = 0;
-            else if (hasTen) stateScore = -1; // Faint Glow
-            else stateScore = 5; // Standard
-            
-            updateItemStyle(vh, stateScore, item.type);
-        }
-
-        // 2. If it is a Sheet, update the parent File header
-        if (item.type == TYPE_SHEET && rv != null) {
-             boolean fAllZero = true;
-             boolean fAllTen = true;
-             boolean fHasTen = false;
-             boolean fHasAny = false;
-             
-             for (Course c : rawCourses) {
-                 String f = c.fileId == null ? "<nofile>" : c.fileId;
-                 if (f.equals(fileId)) {
-                     fHasAny = true;
-                     float score = c.interest;
-                     // If this course belongs to the dragged Sheet, apply delta
-                     String s = c.sheetName == null ? "<nosheet>" : c.sheetName;
-                     if (s.equals(sheetName)) {
-                         score = Math.max(0, Math.min(10, c.interest + delta));
-                     }
-                     
-                     if (score < 9.9f) fAllTen = false;
-                     if (score > 0.1f) fAllZero = false;
-                     if (score >= 9.9f) fHasTen = true;
-                 }
-             }
-             
-             if (fHasAny) {
-                 int stateScore;
-                 if (fAllTen) stateScore = 10;
-                 else if (fAllZero) stateScore = 0;
-                 else if (fHasTen) stateScore = -1;
-                 else stateScore = 5;
-                 
-                 int filePos = findPositionById(fileId);
-                 if (filePos != -1) {
-                     RecyclerView.ViewHolder fVh = rv.findViewHolderForAdapterPosition(filePos);
-                     if (fVh != null) {
-                         updateItemStyle(fVh, stateScore, TYPE_FILE);
-                     }
-                 }
-             }
-        }
+        if (!hasAny) return;
+        
+        // Determine state code
+        int stateScore;
+        if (allTen) stateScore = 10;
+        else if (allZero) stateScore = 0;
+        else if (tenCount == 1) stateScore = -1; // Faint Glow (Single 10)
+        else stateScore = 5; // Standard
+        
+        updateItemStyle(vh, stateScore, item.type);
     }
 
     /**
@@ -1259,20 +1385,20 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         if (targetCourse == null) return;
         
         String fileId = targetCourse.fileId == null ? "<nofile>" : targetCourse.fileId;
-        String sheetName = targetCourse.sheetName == null ? "<nosheet>" : targetCourse.sheetName;
-        String sheetId = fileId + "|" + sheetName;
+        String secondaryKey = getSecondaryGroupId(targetCourse);
+        String sheetId = fileId + "|" + secondaryKey;
         
         // 1. Calculate hypothetical Sheet Stats
         boolean sAllZero = true;
         boolean sAllTen = true;
-        boolean sHasTen = false;
+        int sTenCount = 0;
         boolean sHasAny = false;
         
         for (Course c : rawCourses) {
             String f = c.fileId == null ? "<nofile>" : c.fileId;
             if (!f.equals(fileId)) continue;
-            String s = c.sheetName == null ? "<nosheet>" : c.sheetName;
-            if (s.equals(sheetName)) {
+            
+            if (getSecondaryGroupId(c).equals(secondaryKey)) {
                 sHasAny = true;
                 float score;
                 if (c.id.equals(courseId)) {
@@ -1281,9 +1407,9 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     score = c.interest;
                 }
                 
-                if (score < 9.9f) sAllTen = false;
+                if (score < 9.5f) sAllTen = false;
                 if (score > 0.1f) sAllZero = false;
-                if (score >= 9.9f) sHasTen = true;
+                if (score >= 9.5f) sTenCount++;
             }
         }
         
@@ -1291,7 +1417,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             int stateScore;
             if (sAllTen) stateScore = 10;
             else if (sAllZero) stateScore = 0;
-            else if (sHasTen) stateScore = -1;
+            else if (sTenCount == 1) stateScore = -1;
             else stateScore = 5;
             
             int sheetPos = findPositionById(sheetId);
@@ -1304,7 +1430,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         // 2. Calculate hypothetical File Stats
         boolean fAllZero = true;
         boolean fAllTen = true;
-        boolean fHasTen = false;
+        int fTenCount = 0;
         boolean fHasAny = false;
         
         for (Course c : rawCourses) {
@@ -1318,9 +1444,9 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     score = c.interest;
                 }
                 
-                if (score < 9.9f) fAllTen = false;
+                if (score < 9.5f) fAllTen = false;
                 if (score > 0.1f) fAllZero = false;
-                if (score >= 9.9f) fHasTen = true;
+                if (score >= 9.5f) fTenCount++;
             }
         }
         
@@ -1328,13 +1454,34 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             int stateScore;
             if (fAllTen) stateScore = 10;
             else if (fAllZero) stateScore = 0;
-            else if (fHasTen) stateScore = -1;
+            else if (fTenCount == 1) stateScore = -1;
             else stateScore = 5;
             
             int filePos = findPositionById(fileId);
             if (filePos != -1) {
                 RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(filePos);
                 updateItemStyle(vh, stateScore, TYPE_FILE);
+            }
+        }
+    }
+
+    /**
+     * Update child sheet headers when dragging a file header.
+     * This iterates through visible items and updates any sheet belonging to the file.
+     */
+    public void updateChildHeadersForFileDrag(RecyclerView rv, String fileId, float delta) {
+        if (fileId == null || rv == null) return;
+        
+        // Find all visible sheets belonging to this file
+        for (int i = 0; i < display.size(); i++) {
+            Item item = display.get(i);
+            if (item.type == TYPE_SHEET && item.parentId != null && item.parentId.equals(fileId)) {
+                // This is a child sheet. Update its style.
+                // We can reuse updateHeaderStyleForDrag since it calculates stats based on item.id
+                RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(i);
+                if (vh != null) {
+                    updateHeaderStyleForDrag(vh, delta);
+                }
             }
         }
     }
@@ -1350,19 +1497,27 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         
         // 1. Update Course Interest
         item.course.interest = newScore;
+        try {
+            for (Course c : rawCourses) {
+                if (c != null && c.id != null && c.id.equals(item.course.id)) {
+                    c.interest = newScore;
+                    break;
+                }
+            }
+        } catch (Throwable _t) {}
         
         // 2. Update stats for parent File and Sheet
         String fileId = item.course.fileId == null ? "<nofile>" : item.course.fileId;
-        String sheetName = item.course.sheetName == null ? "<nosheet>" : item.course.sheetName;
-        String sheetId = fileId + "|" + sheetName;
+        String secondaryKey = getSecondaryGroupId(item.course);
+        String sheetId = fileId + "|" + secondaryKey;
         
         // Re-calculate Sheet Stats
         HeaderStats sheetStats = new HeaderStats();
         for (Course c : rawCourses) {
             String f = c.fileId == null ? "<nofile>" : c.fileId;
             if (!f.equals(fileId)) continue;
-            String s = c.sheetName == null ? "<nosheet>" : c.sheetName;
-            if (s.equals(sheetName)) {
+            
+            if (getSecondaryGroupId(c).equals(secondaryKey)) {
                  sheetStats.update(c);
             }
         }

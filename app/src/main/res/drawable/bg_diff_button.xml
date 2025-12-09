@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#FFFFFF" />
-    <corners android:radius="8dp" />
-    <!-- 添加透明描边确保按钮不受主题tint影响 -->
-    <stroke android:width="0dp" android:color="#00000000" />
-</shape>
