@@ -26,3 +26,5 @@ logcat.txt
 .externalNativeBuild
 .cxx
 
+#课表信息不提交
+courses/
