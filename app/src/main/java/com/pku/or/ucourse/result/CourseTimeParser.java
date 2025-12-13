@@ -77,9 +77,9 @@ public class CourseTimeParser {
 
         // First match explicit ranges like 周一7-9节 or 一7~9节
         Matcher m = SEG_PAT.matcher(s);
-        StringBuilder sb = new StringBuilder();
+        // 使用List记录所有匹配位置，避免使用appendReplacement方法
+        List<int[]> matches = new ArrayList<>();
         while (m.find()) {
-            boolean keep = false;
             String d = m.group(1);
             String a = m.group(2);
             String b = m.group(3);
@@ -94,18 +94,28 @@ public class CourseTimeParser {
                         if (end > 11) end = 11;
                         String key = day + ":" + start + ":" + end;
                         if (seen.add(key)) out.add(new TimeSlot(day, start, end));
-                        keep = true;
                     }
                 } catch (NumberFormatException _e) { }
             }
-            // If matched and parsed successfully, remove it from string to prevent LIST_PAT from matching parts of it
-            // If not valid (e.g. invalid day), we still remove it if it matched the pattern structure, 
-            // but here the pattern is specific enough that we should probably remove it to be safe.
-            // Actually, replace with space to avoid concatenating surrounding text
-            m.appendReplacement(sb, " ");
+            // 记录匹配位置
+            matches.add(new int[]{m.start(), m.end()});
         }
-        m.appendTail(sb);
-        s = sb.toString();
+        
+        // 手动构建新字符串，将匹配部分替换为空格
+        if (!matches.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            int lastIndex = 0;
+            for (int[] match : matches) {
+                // 添加匹配前的内容
+                sb.append(s.substring(lastIndex, match[0]));
+                // 替换匹配部分为空格
+                sb.append(" ");
+                lastIndex = match[1];
+            }
+            // 添加最后一个匹配后的内容
+            sb.append(s.substring(lastIndex));
+            s = sb.toString();
+        }
 
         // Then match list style like 周一7,8节
         Matcher ml = LIST_PAT.matcher(s);
