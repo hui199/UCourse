@@ -7,6 +7,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -67,8 +70,10 @@ public class HomeFragment extends Fragment {
     private RecyclerView rv;
     // 课程适配器：负责渲染课程列表
     private CourseAdapter adapter;
+
     // 设置开学日期按钮
-    private Button btnSetStartDate;
+    // 已移除设置第一周按钮，改为通过菜单实现
+    // private Button btnSetStartDate;
     private static final String PREF_NAME = "ucourse_prefs";
     private static final String KEY_FIRST_WEEK_DATE = "first_week_date";
 
@@ -80,6 +85,8 @@ public class HomeFragment extends Fragment {
     private ColumnMapDialogFragment.MappingResult previousMapping = null;
     // 是否应用映射到所有Sheet：用于批量导入时的快捷操作
     private boolean applyMappingToAll = false;
+    // 存储拖动开始时所有课程的原始分数（用于File/Sheet拖动时避免累积误差）
+    private final Map<String, Integer> originalInterestMap = new HashMap<>();
 
     /**
      * 待处理的Sheet数据
@@ -124,6 +131,9 @@ public class HomeFragment extends Fragment {
                 }
             }
         );
+        // 启用选项菜单
+        setHasOptionsMenu(true);
+
     }
 
     /**
@@ -136,18 +146,14 @@ public class HomeFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_home, container, false);
         
         // 初始化UI组件
-        Button btn = v.findViewById(R.id.btn_import);
-        btnSetStartDate = v.findViewById(R.id.btn_set_start_date);
+        // 已移除导入课程表按钮和设置第一周按钮，改为通过菜单实现
         tvStatus = v.findViewById(R.id.tv_status);
         rv = v.findViewById(R.id.rv_courses);
         rv.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new CourseAdapter(new ArrayList<>());
+        adapter.setViewModel(vm);
         rv.setAdapter(adapter);
 
-        // 设置开学日期按钮点击事件
-        btnSetStartDate.setOnClickListener(view -> showSetDateDialog());
-        checkFirstWeekDateState();
-        
         // 禁用RecyclerView动画以避免滑动评分时的视觉跳动
         androidx.recyclerview.widget.DefaultItemAnimator animator = new androidx.recyclerview.widget.DefaultItemAnimator();
         animator.setSupportsChangeAnimations(false);
@@ -229,27 +235,24 @@ public class HomeFragment extends Fragment {
         adapter.setOnCourseClickListener(this::showCourseDetail);
 
         /**
-         * 导入按钮点击事件：打开文件选择器
-         * 支持的文件类型：Excel（.xlsx）、CSV、旧版Excel（.xls）
-         */
-        btn.setOnClickListener(x -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.setType("*/*");
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            // 支持的文件类型：Excel和CSV
-            String[] mimeTypes = {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "application/vnd.ms-excel"};
-            intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-            
-            if (openFileLauncher != null) {
-                openFileLauncher.launch(intent);
-            }
-        });
-
-        /**
          * 监听课程数据变化，更新UI
          * 当课程列表变化时，自动刷新RecyclerView和状态文本
          */
         vm.courses.observe(getViewLifecycleOwner(), list -> {
+            // 检查传播学研究方法课程是否存在于原始数据中
+            boolean found = false;
+            if (list != null) {
+                for (Course c : list) {
+                    if (c != null && c.title != null && c.title.contains("传播学研究方法")) {
+                        found = true;
+                        Log.d("UCourse_HomeFragment", "传播学研究方法课程存在于原始数据中: 标题=" + c.title + ", ID=" + c.id + ", 兴趣分=" + c.interest + ", 原始时间=" + c.rawTime);
+                        break;
+                    }
+                }
+                if (!found) {
+                    Log.d("UCourse_HomeFragment", "传播学研究方法课程不存在于原始数据中");
+                }
+            }
             adapter.setCourses(list);
             tvStatus.setText("已导入课程: " + (list != null ? list.size() : 0));
         });
@@ -270,8 +273,8 @@ public class HomeFragment extends Fragment {
     private void setupSimpleSwipeGesture(RecyclerView recyclerView) {
         // 获取屏幕宽度，用于计算滑动灵敏度
         final int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        // 滑动屏幕宽度50%对应10分，即每5%屏幕宽度对应1分
-        final float pixelsPerScore = screenWidth * 0.05f; // 滑动屏幕宽度50%对应10分
+        // 滑动屏幕宽度80%对应10分，即每8%屏幕宽度对应1分
+        final float pixelsPerScore = screenWidth * 0.08f; // 滑动屏幕宽度80%对应10分
         
         recyclerView.addOnItemTouchListener(new RecyclerView.SimpleOnItemTouchListener() {
             // 触摸起始位置
@@ -295,19 +298,60 @@ public class HomeFragment extends Fragment {
                         startY = e.getY();
                         isSwipeGesture = false;
                         
+                        Log.i("HomeFragment", "hui_debug: ACTION_DOWN - e.getX()=" + e.getX() + ", e.getY()=" + e.getY());
+                        
                         // 查找被触摸的项目
                         View childView = rv.findChildViewUnder(e.getX(), e.getY());
                         if (childView != null) {
+                            android.util.Log.d("CourseAdapterDebug", "ACTION_DOWN - found childView");
                             currentViewHolder = rv.getChildViewHolder(childView);
                             if (currentViewHolder != null) {
+                                android.util.Log.d("CourseAdapterDebug", "ACTION_DOWN - found currentViewHolder");
                                 int position = currentViewHolder.getAdapterPosition();
+                                android.util.Log.d("CourseAdapterDebug", "ACTION_DOWN - position=" + position + ", NO_POSITION=" + RecyclerView.NO_POSITION);
                                 if (position != RecyclerView.NO_POSITION && adapter != null) {
+                                    android.util.Log.d("CourseAdapterDebug", "ACTION_DOWN - position is valid, adapter is not null");
                                     // 获取项目ID和类型，保存初始分数
                                     currentItemId = adapter.getIdForPosition(position);
                                     int type = adapter.getTypeForPosition(position);
                                     startScore = getCurrentInterest(type, currentItemId);
+                                    android.util.Log.d("CourseAdapterDebug", "ACTION_DOWN - startScore=" + startScore + ", type=" + type + ", id=" + currentItemId);
+                                    
+                                    // 如果是File或Sheet，记录所有相关课程的原始分数
+                                    if (type == 0 || type == 1) {
+                                        originalInterestMap.clear();
+                                        List<Course> courses = vm.courses.getValue();
+                                        if (courses != null) {
+                                            for (Course c : courses) {
+                                                if (type == 0) {
+                                                    String cf = c.fileId == null ? "<nofile>" : c.fileId;
+                                                    if (cf.equals(currentItemId)) {
+                                                        originalInterestMap.put(c.id, c.interest);
+                                                    }
+                                                } else if (type == 1) {
+                                                    if (getCourseSheetId(c).equals(currentItemId)) {
+                                                        originalInterestMap.put(c.id, c.interest);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        android.util.Log.d("CourseAdapterDebug", "ACTION_DOWN - recorded " + originalInterestMap.size() + " courses in originalInterestMap");
+                                    }
+                                } else {
+                                    android.util.Log.d("CourseAdapterDebug", "ACTION_DOWN - position is invalid or adapter is null");
+                                    // 如果位置无效，清除当前状态
+                                    currentItemId = null;
+                                    startScore = 0;
                                 }
+                            } else {
+                                currentViewHolder = null;
+                                currentItemId = null;
+                                startScore = 0;
                             }
+                        } else {
+                            currentViewHolder = null;
+                            currentItemId = null;
+                            startScore = 0;
                         }
                         return false;
                         
@@ -329,7 +373,40 @@ public class HomeFragment extends Fragment {
             
             @Override
             public void onTouchEvent(@NonNull RecyclerView rv, @NonNull android.view.MotionEvent e) {
-                if (currentViewHolder == null || currentItemId == null) return;
+                if (currentViewHolder == null) {
+                    Log.i("HomeFragment", "hui_debug: onTouchEvent - currentViewHolder is null, returning");
+                    return;
+                }
+                
+                Log.i("HomeFragment", "hui_debug: onTouchEvent - currentViewHolder is not null, e.getAction()=" + e.getAction());
+                
+                // 确保在处理触摸事件时，我们有有效的项目ID和初始分数
+                if (currentItemId == null) {
+                    Log.i("HomeFragment", "hui_debug: onTouchEvent - currentItemId is null, trying to reinitialize");
+                    try {
+                        int position = currentViewHolder.getAdapterPosition();
+                        Log.i("HomeFragment", "hui_debug: onTouchEvent - currentViewHolder.getAdapterPosition()=" + position);
+                        if (position != RecyclerView.NO_POSITION && adapter != null) {
+                            Log.i("HomeFragment", "hui_debug: onTouchEvent - position is valid, adapter is not null");
+                            currentItemId = adapter.getIdForPosition(position);
+                            Log.i("HomeFragment", "hui_debug: onTouchEvent - got currentItemId=" + currentItemId);
+                            int type = adapter.getTypeForPosition(position);
+                            Log.i("HomeFragment", "hui_debug: onTouchEvent - got type=" + type);
+                            startScore = getCurrentInterest(type, currentItemId);
+                            Log.i("HomeFragment", "hui_debug: onTouchEvent - reinitialized startScore=" + startScore + ", type=" + type + ", id=" + currentItemId);
+                        } else {
+                            Log.i("HomeFragment", "hui_debug: onTouchEvent - position is invalid or adapter is null, returning");
+                            // 如果仍然无法获取位置，直接返回
+                            return;
+                        }
+                    } catch (Exception ex) {
+                        android.util.Log.d("CourseAdapterDebug", "onTouchEvent - exception when reinitializing: " + ex.getMessage());
+                        // 如果获取失败，直接返回
+                        return;
+                    }
+                } else {
+                    android.util.Log.d("CourseAdapterDebug", "onTouchEvent - currentItemId is not null, id=" + currentItemId + ", startScore=" + startScore);
+                }
                 
                 switch (e.getAction()) {
                     case android.view.MotionEvent.ACTION_MOVE:
@@ -338,10 +415,16 @@ public class HomeFragment extends Fragment {
                             float deltaX = e.getX() - startX;
                             float scoreChangeFloat = deltaX / pixelsPerScore; // 可能为负
                             float newScoreFloat = Math.max(0, Math.min(10, startScore + scoreChangeFloat));
+                            int currentScoreInt = Math.round(newScoreFloat);
                             
+                            try {
+                                android.util.Log.d("CourseAdapterDebug", "ACTION_MOVE: start=" + startScore + 
+                                    " x=" + e.getX() + " startX=" + startX + " deltaX=" + deltaX + 
+                                    " change=" + scoreChangeFloat + " newFloat=" + newScoreFloat + " newInt=" + currentScoreInt);
+                            } catch (Throwable _t) {}
+
                             // 实时更新Item样式（背景、文字颜色等），确保拖动过程中0分变灰/10分发光即时生效
                             if (adapter != null) {
-                                int currentScoreInt = Math.round(newScoreFloat);
                                 int type = adapter.getTypeForPosition(currentViewHolder.getAdapterPosition());
                                 
                                 if (type == 2) { // Course
@@ -365,7 +448,7 @@ public class HomeFragment extends Fragment {
                                     int itType = adapter.getTypeForPosition(pos);
                                     android.widget.TextView tvScore = currentViewHolder.itemView.findViewById(R.id.tv_interest_score);
                                     if (tvScore != null && (itType == 1 || itType == 0)) { // Sheet or File
-                                        int deltaDisplay = Math.round(scoreChangeFloat);
+                                        int deltaDisplay = (int)scoreChangeFloat;
                                         String s = (deltaDisplay > 0 ? ("+" + deltaDisplay) : String.valueOf(deltaDisplay));
                                         tvScore.setText(s);
                                         tvScore.setVisibility(View.VISIBLE);
@@ -381,12 +464,11 @@ public class HomeFragment extends Fragment {
                                 int pos = currentViewHolder.getAdapterPosition();
                                 if (pos != RecyclerView.NO_POSITION && adapter != null) {
                                     int itType = adapter.getTypeForPosition(pos);
-                                    if (itType == 1) {
-                                        // rv可见范围内的course项更新
-                                        updateVisibleCoursesForSheet(rv, currentItemId, scoreChangeFloat);
-                                    } else if (itType == 0) {
-                                        updateVisibleCoursesForFile(rv, currentItemId, scoreChangeFloat);
-                                        // Update child headers (Sheets/Units) visual style
+                                    if (itType == 1 || itType == 0) { // Sheet or File
+                                        adapter.previewChildrenForHeaderDrag(rv, pos, scoreChangeFloat, originalInterestMap);
+                                    }
+                                    
+                                    if (itType == 0) {
                                         adapter.updateChildHeadersForFileDrag(rv, currentItemId, scoreChangeFloat);
                                     }
                                 }
@@ -401,50 +483,55 @@ public class HomeFragment extends Fragment {
                             float finalDeltaX = e.getX() - startX;
                             float deltaFloat = finalDeltaX / pixelsPerScore;
 
-                            // 将浮点delta转为整数delta用于视图显示（四舍五入）
-                            int scoreChange = Math.round(deltaFloat);
-                            // 计算最终绝对分数（用于视图展示）
-                            int finalScore = Math.max(0, Math.min(10, startScore + scoreChange));
+                            // Fix for Issue 2: Use rounding to match preview logic instead of truncation
+                            // Calculate final absolute score using the same logic as ACTION_MOVE
+                            float finalScoreFloat = Math.max(0, Math.min(10, startScore + deltaFloat));
+                            int finalScore = Math.round(finalScoreFloat);
+                            
+                            try {
+                                android.util.Log.d("CourseAdapterDebug", "ACTION_UP: start=" + startScore + 
+                                    " x=" + e.getX() + " startX=" + startX + " deltaX=" + finalDeltaX + 
+                                    " change=" + deltaFloat + " finalFloat=" + finalScoreFloat + " finalInt=" + finalScore);
+                            } catch (Throwable _t) {}
 
                             // 立即把视图更新为最终分数，避免异步保存带来的闪跳
                             try {
-                                if (adapter != null) {
-                                    // 统一更新课程分数并刷新父级标题样式（包含发光/灰色逻辑）
-                                    int pos = currentViewHolder.getAdapterPosition();
-                                    adapter.updateItemScore(rv, pos, finalScore);
-                                }
-
-                                android.widget.TextView tvScore = currentViewHolder.itemView.findViewById(R.id.tv_interest_score);
-                                if (tvScore != null) {
-                                    // 对于Sheet/File显示增量，对单一课程显示最终分数
-                                    int pos = currentViewHolder.getAdapterPosition();
-                                    if (pos != RecyclerView.NO_POSITION && adapter != null) {
-                                        int itType = adapter.getTypeForPosition(pos);
-                                        if (itType == 1 || itType == 0) { // Sheet or File
-                                            // 手指离开后隐藏数值显示并恢复显示条目数
-                                            tvScore.setVisibility(View.GONE);
-                                            android.widget.TextView tvCount = currentViewHolder.itemView.findViewById(R.id.tv_count);
-                                            if (tvCount != null) tvCount.setVisibility(View.VISIBLE);
-                                        } else {
-                                            tvScore.setText(String.valueOf(finalScore));
-                                            tvScore.setVisibility(View.VISIBLE);
-                                        }
+                                int type = adapter.getTypeForPosition(currentViewHolder.getAdapterPosition());
+                                
+                                if (type == 2) {
+                                    // 单个课程：直接更新分数
+                                    if (adapter != null) {
+                                        int pos = currentViewHolder.getAdapterPosition();
+                                        adapter.updateItemScore(rv, pos, finalScore);
+                                    }
+                                } else {
+                                    // Sheet/File：显示增量，不调用updateItemScore
+                                    android.widget.TextView tvScore = currentViewHolder.itemView.findViewById(R.id.tv_interest_score);
+                                    if (tvScore != null) {
+                                        tvScore.setVisibility(View.GONE);
+                                        android.widget.TextView tvCount = currentViewHolder.itemView.findViewById(R.id.tv_count);
+                                        if (tvCount != null) tvCount.setVisibility(View.VISIBLE);
                                     }
                                 }
                             } catch (Throwable _t) {}
 
                             if (Math.abs(deltaFloat) >= 0.5f) {
-                                // 当deltaFloat绝对值至少达到0.5时认为有实际变化，使用浮点版本保证与视觉四舍五入一致
                                 int type = adapter.getTypeForPosition(currentViewHolder.getAdapterPosition());
-                                applyInterestDeltaForItemFloat(type, currentItemId, deltaFloat);
+                                if (type == 0 || type == 1) {
+                                    java.util.Map<String, Integer> originalMapCopy = new java.util.HashMap<>(originalInterestMap);
+                                    applyInterestDeltaForItemFloat(type, currentItemId, deltaFloat, originalMapCopy);
+                                }
                             }
-                            // 不在此立即reset视觉，等待数据保存完成后由adapter刷新绑定来恢复最终状态，避免闪跳
+                            isSwipeGesture = false;
+                            currentViewHolder = null;
+                            currentItemId = null;
+                            startScore = 0;
+                            originalInterestMap.clear();
+                            if (adapter != null) {
+                                adapter.clearPreviewInterest();
+                                adapter.notifyDataSetChanged();
+                            }
                         }
-                        
-                        isSwipeGesture = false;
-                        currentViewHolder = null;
-                        currentItemId = null;
-                        startScore = 0;
                         break;
                 }
             }
@@ -467,19 +554,23 @@ public class HomeFragment extends Fragment {
         if (cur == null) cur = new ArrayList<>();
 
         // 创建逻辑键映射：fileId|sheetName|title|teachers|unit
-        // 此映射用于识别逻辑上相同的课程（即使ID不同）
-        Map<String, Course> existingByLogicalKey = new HashMap<>();
+        // 使用队列来处理具有相同逻辑键的重复课程
+        Map<String, java.util.Queue<Course>> existingByLogicalKey = new HashMap<>();
         for (Course ex : cur) {
             String logicalKey = (ex.fileId == null ? "<nofile>" : ex.fileId) + "|" +
                                (ex.sheetName == null ? "<nosheet>" : ex.sheetName) + "|" +
                                (ex.title == null ? "" : ex.title.trim()) + "|" +
                                (ex.teachers == null ? "" : ex.teachers.trim()) + "|" +
                                (ex.unit == null ? "" : ex.unit.trim());
-            existingByLogicalKey.put(logicalKey, ex);
+            if (!existingByLogicalKey.containsKey(logicalKey)) {
+                existingByLogicalKey.put(logicalKey, new java.util.LinkedList<>());
+            }
+            existingByLogicalKey.get(logicalKey).offer(ex);
         }
 
         List<Course> remaining = new ArrayList<>();
         List<Course> toAdd = new ArrayList<>();
+        Set<Course> processedExisting = new HashSet<>();
 
         // 处理解析的课程：更新已存在的课程或添加新课程
         for (Course p : parsed) {
@@ -489,7 +580,9 @@ public class HomeFragment extends Fragment {
                                (p.teachers == null ? "" : p.teachers.trim()) + "|" +
                                (p.unit == null ? "" : p.unit.trim());
 
-            Course existing = existingByLogicalKey.get(logicalKey);
+            java.util.Queue<Course> queue = existingByLogicalKey.get(logicalKey);
+            Course existing = (queue != null && !queue.isEmpty()) ? queue.poll() : null;
+            
             if (existing != null) {
                 // 更新已存在课程的数据，但保留用户评分
                 int preservedInterest = existing.interest;
@@ -502,6 +595,7 @@ public class HomeFragment extends Fragment {
                 // 保持现有ID以维持一致性
                 existing.interest = preservedInterest; // 保留用户评分
                 remaining.add(existing);
+                processedExisting.add(existing);
             } else {
                 // 新课程
                 toAdd.add(p);
@@ -509,19 +603,9 @@ public class HomeFragment extends Fragment {
             }
         }
 
-        // 添加未被替换的已存在课程
+        // 添加未被替换的已存在课程（孤儿课程）
         for (Course ex : cur) {
-            String logicalKey = (ex.fileId == null ? "<nofile>" : ex.fileId) + "|" +
-                               (ex.sheetName == null ? "<nosheet>" : ex.sheetName) + "|" +
-                               (ex.title == null ? "" : ex.title.trim()) + "|" +
-                               (ex.teachers == null ? "" : ex.teachers.trim()) + "|" +
-                               (ex.unit == null ? "" : ex.unit.trim());
-            if (!existingByLogicalKey.containsKey(logicalKey) || !parsed.stream().anyMatch(p ->
-                logicalKey.equals((p.fileId == null ? "<nofile>" : p.fileId) + "|" +
-                                (p.sheetName == null ? "<nosheet>" : p.sheetName) + "|" +
-                                (p.title == null ? "" : p.title.trim()) + "|" +
-                                (p.teachers == null ? "" : p.teachers.trim()) + "|" +
-                                (p.unit == null ? "" : p.unit.trim())))) {
+            if (!processedExisting.contains(ex)) {
                 remaining.add(ex);
             }
         }
@@ -550,118 +634,54 @@ public class HomeFragment extends Fragment {
 
     // 在滑动Sheet时实时更新RecyclerView中可见的课程项的进度条
     private void updateVisibleCoursesForSheet(RecyclerView rv, String sheetId, float deltaFloat) {
-        if (rv == null || sheetId == null || adapter == null) return;
-        try {
-            int childCount = rv.getChildCount();
-            for (int i = 0; i < childCount; i++) {
-                View child = rv.getChildAt(i);
-                if (child == null) continue;
-                RecyclerView.ViewHolder vh = rv.getChildViewHolder(child);
-                if (vh == null) continue;
-                int pos = vh.getAdapterPosition();
-                if (pos == RecyclerView.NO_POSITION) continue;
-                int t = adapter.getTypeForPosition(pos);
-                if (t != 2) continue; // 只处理课程项
-                // 检查课程是否属于该Sheet
-                String parent = adapter.getParentIdForPosition(pos);
-                if (parent == null) continue;
-                if (!parent.equals(sheetId)) continue;
-
-                // 基于课程原始分数计算临时显示分数
-                Course c = null;
-                try {
-                    // adapter的display并非公开，我们查询vm中的课程
-                    List<Course> cur = vm.courses.getValue();
-                    if (cur != null) {
-                        for (Course cc : cur) {
-                            if (cc != null && cc.id != null && cc.id.equals(adapter.getIdForPosition(pos))) { c = cc; break; }
-                        }
-                    }
-                } catch (Throwable _t) { }
-                int base = c == null ? 5 : Math.max(0, Math.min(10, c.interest));
-                float fv = base + deltaFloat;
-                int display = Math.max(0, Math.min(10, Math.round(fv)));
-
-                // 实时更新Item样式（背景、文字颜色、进度条等）
-                if (adapter != null) {
-                    adapter.updateItemStyle(vh, display, 2); // 2 = TYPE_COURSE
-                }
-            }
-        } catch (Throwable _t) {}
+        // Deprecated: Replaced by adapter.previewChildrenForHeaderDrag
     }
 
     // 在滑动File时实时更新RecyclerView中可见的课程项的进度条
     private void updateVisibleCoursesForFile(RecyclerView rv, String fileId, float deltaFloat) {
-        if (rv == null || fileId == null || adapter == null) return;
-        try {
-            int childCount = rv.getChildCount();
-            for (int i = 0; i < childCount; i++) {
-                View child = rv.getChildAt(i);
-                if (child == null) continue;
-                RecyclerView.ViewHolder vh = rv.getChildViewHolder(child);
-                if (vh == null) continue;
-                int pos = vh.getAdapterPosition();
-                if (pos == RecyclerView.NO_POSITION) continue;
-                int t = adapter.getTypeForPosition(pos);
-                
-                String parent = adapter.getParentIdForPosition(pos); // Sheet ID (fileId|sheetName) or null
-                
-                // Case 1: Course Item (type=2)
-                if (t == 2) {
-                    if (parent == null) continue;
-                    if (!parent.startsWith(fileId + "|")) continue;
-
-                    // 基于课程原始分数计算临时显示分数
-                    Course c = null;
-                    try {
-                        // adapter的display并非公开，我们查询vm中的课程
-                        List<Course> cur = vm.courses.getValue();
-                        if (cur != null) {
-                            for (Course cc : cur) {
-                                if (cc != null && cc.id != null && cc.id.equals(adapter.getIdForPosition(pos))) { c = cc; break; }
-                            }
-                        }
-                    } catch (Throwable _t) { }
-                    int base = c == null ? 5 : Math.max(0, Math.min(10, c.interest));
-                    float fv = base + deltaFloat;
-                    int display = Math.max(0, Math.min(10, Math.round(fv)));
-
-                    // 实时更新Item样式（背景、文字颜色、进度条等）
-                    adapter.updateItemStyle(vh, display, 2); // 2 = TYPE_COURSE
-                } 
-                // Case 2: Sheet Header (type=1)
-                else if (t == 1) {
-                    // Sheet's parentId is the fileId
-                    String pId = adapter.getParentIdForPosition(pos);
-                    if (pId != null && pId.equals(fileId)) {
-                        // Update the Sheet header style based on the drag delta
-                        // This will calculate the hypothetical stats of courses in this sheet with the delta applied
-                        adapter.updateHeaderStyleForDrag(vh, deltaFloat);
-                    }
-                }
-            }
-        } catch (Throwable _t) {}
+        // Deprecated: Replaced by adapter.previewChildrenForHeaderDrag
     }
 
     private void checkFirstWeekDateState() {
-        if (btnSetStartDate == null || getContext() == null) return;
+        // 检查开学日期是否已设置
+        if (getContext() == null) return;
         SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String date = prefs.getString(KEY_FIRST_WEEK_DATE, null);
-        if (date == null) {
-            // Not set: Visual cue (Red icon tint)
-            Drawable[] drawables = btnSetStartDate.getCompoundDrawables();
-            if (drawables[0] != null) {
-                drawables[0].setColorFilter(Color.RED, PorterDuff.Mode.SRC_IN);
-            }
-        } else {
-            // Set: Remove visual cue (Default tint)
-            Drawable[] drawables = btnSetStartDate.getCompoundDrawables();
-            if (drawables[0] != null) {
-                drawables[0].clearColorFilter();
-            }
+        // 由于已移除设置按钮，不再需要视觉提示
+    }
+    
+    /**
+     * 检查开学日期状态并更新菜单图标颜色
+     * @param menu 菜单对象
+     */
+    private void checkFirstWeekDateState(android.view.Menu menu) {
+        if (getContext() == null || menu == null) return;
+        
+        // 获取设置第一周的菜单项
+        android.view.MenuItem item = menu.findItem(R.id.menu_set_start_date);
+        if (item == null) return;
+        
+        // 检查开学日期是否已设置
+        SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String date = prefs.getString(KEY_FIRST_WEEK_DATE, null);
+        
+        // 设置图标颜色：红色表示未设置，白色表示已设置
+        Drawable icon = item.getIcon();
+        if (icon != null) {
+            int color = (date == null) ? Color.RED : Color.WHITE;
+            icon.setColorFilter(color, PorterDuff.Mode.SRC_ATOP);
+            item.setIcon(icon);
         }
     }
 
+
+    
+
+
+
+
+
+    
     private void showSetDateDialog() {
         if (getContext() == null) return;
         Calendar c = Calendar.getInstance();
@@ -1117,40 +1137,104 @@ public class HomeFragment extends Fragment {
      * @return 兴趣分数（0-10分），如果找不到则返回5分
      */
     private int getCurrentInterest(int type, String id) {
-        List<Course> cur = vm.courses.getValue();
-        if (cur == null || cur.isEmpty()) return 5;
+        // 优先使用adapter的rawCourses列表（如果adapter不为null），确保与显示的课程列表一致
+        List<Course> cur = null;
+        if (adapter != null) {
+            cur = adapter.getRawCourses();
+        }
+        if (cur == null || cur.isEmpty()) {
+            cur = vm.courses.getValue();
+        }
+        Log.i("HomeFragment", "hui_debug: getCurrentInterest - type=" + type + ", id=" + id);
+        if (cur == null || cur.isEmpty()) {
+            Log.i("HomeFragment", "hui_debug: getCurrentInterest - cur is null or empty, return 5");
+            return 5;
+        }
+        
         if (type == 2) {
             // 课程类型：直接返回该课程的分数
-            for (Course c : cur) if (c != null && c.id != null && c.id.equals(id)) return Math.max(0, Math.min(10, c.interest));
+            Log.i("HomeFragment", "hui_debug: getCurrentInterest - type=COURSE");
+            Log.i("HomeFragment", "hui_debug: getCurrentInterest - looking for id=" + id + ", cur.size()=" + cur.size());
+            // 记录rawCourses列表中的所有课程ID
+            StringBuilder sb = new StringBuilder("hui_debug: getCurrentInterest - rawCourses list:");
+            for (Course c : cur) {
+                if (c != null && c.id != null) {
+                    sb.append(" [id=").append(c.id).append(", interest=").append(c.interest).append("]");
+                }
+            }
+            Log.i("HomeFragment", sb.toString());
+            for (Course c : cur) {
+                if (c != null && c.id != null) {
+                    Log.i("HomeFragment", "hui_debug: getCurrentInterest - checking course id=" + c.id + ", interest=" + c.interest + ", equals? " + c.id.equals(id));
+                    if (c.id.equals(id)) {
+                        int interest = Math.max(0, Math.min(10, c.interest));
+                        Log.i("HomeFragment", "hui_debug: getCurrentInterest - found course, return " + interest);
+                        return interest;
+                    }
+                }
+            }
+            Log.i("HomeFragment", "hui_debug: getCurrentInterest - course not found, return 5");
             return 5;
         } else if (type == 1) {
             // Sheet类型：计算该Sheet下所有课程的平均分
+            Log.i("HomeFragment", "hui_debug: getCurrentInterest - type=SHEET");
             String[] parts = id == null ? new String[]{"",""} : id.split("\\|", 2);
             String f = parts.length>0?parts[0].trim():"";
             String s = parts.length>1?parts[1].trim():"";
+            Log.i("HomeFragment", "hui_debug: getCurrentInterest - Sheet file=" + f + ", sheet=" + s);
+            
             int total = 0, count = 0;
             for (Course c : cur) {
-                String cf = (c.fileId == null ? "<nofile>" : c.fileId).trim();
-                String cs = (c.sheetName == null ? "<nosheet>" : c.sheetName).trim();
-                if (cf.equals(f) && cs.equals(s)) {
-                    total += Math.max(0, Math.min(10, c.interest));
-                    count++;
+                if (c != null) {
+                    String cf = (c.fileId == null ? "<nofile>" : c.fileId).trim();
+                    String cs = (c.sheetName == null ? "<nosheet>" : c.sheetName).trim();
+                    Log.i("HomeFragment", "hui_debug: getCurrentInterest - Sheet checking course file=" + cf + ", sheet=" + cs + ", interest=" + c.interest);
+                    if (cf.equals(f) && cs.equals(s)) {
+                        total += Math.max(0, Math.min(10, c.interest));
+                        count++;
+                        Log.i("HomeFragment", "hui_debug: getCurrentInterest - Sheet matched course, total=" + total + ", count=" + count);
+                    }
                 }
             }
-            return count > 0 ? total / count : 5;
+            
+            if (count > 0) {
+                int avg = total / count;
+                Log.i("HomeFragment", "hui_debug: getCurrentInterest - Sheet average=" + avg + ", total=" + total + ", count=" + count);
+                return avg;
+            } else {
+                Log.i("HomeFragment", "hui_debug: getCurrentInterest - Sheet no courses found, return 5");
+                return 5;
+            }
         } else if (type == 0) {
             // 文件类型：计算该文件下所有课程的平均分
+            Log.i("HomeFragment", "hui_debug: getCurrentInterest - type=FILE");
             String target = id == null ? "<nofile>" : id.trim();
+            Log.i("HomeFragment", "hui_debug: getCurrentInterest - File target=" + target);
+            
             int total = 0, count = 0;
             for (Course c : cur) {
-                String cf = c.fileId == null ? "<nofile>" : c.fileId;
-                if (cf.equals(target)) {
-                    total += Math.max(0, Math.min(10, c.interest));
-                    count++;
+                if (c != null) {
+                    String cf = c.fileId == null ? "<nofile>" : c.fileId;
+                    Log.i("HomeFragment", "hui_debug: getCurrentInterest - File checking course file=" + cf + ", interest=" + c.interest);
+                    if (cf.equals(target)) {
+                        total += Math.max(0, Math.min(10, c.interest));
+                        count++;
+                        Log.i("HomeFragment", "hui_debug: getCurrentInterest - File matched course, total=" + total + ", count=" + count);
+                    }
                 }
             }
-            return count > 0 ? total / count : 5;
+            
+            if (count > 0) {
+                int avg = total / count;
+                Log.i("HomeFragment", "hui_debug: getCurrentInterest - File average=" + avg + ", total=" + total + ", count=" + count);
+                return avg;
+            } else {
+                Log.i("HomeFragment", "hui_debug: getCurrentInterest - File no courses found, return 5");
+                return 5;
+            }
         }
+        
+        Log.i("HomeFragment", "hui_debug: getCurrentInterest - unknown type, return 5");
         return 5;
     }
 
@@ -1250,7 +1334,7 @@ public class HomeFragment extends Fragment {
         
         // 转换为整数格子（0-10）
         int displayScore = Math.max(0, Math.min(10, Math.round(score)));
-        
+        Log.i("HomeFragment", "hui_debug: displayScore 1: " + displayScore);
         // 更新分数文本（如果存在）
         if (tvScore != null) {
             tvScore.setText(String.valueOf(displayScore));
@@ -1284,6 +1368,8 @@ public class HomeFragment extends Fragment {
             
             if (clipDrawable != null) {
                 if (showProgressBar) {
+                    //打印displayScore
+                    Log.i("HomeFragment", "hui_debug: displayScore 2: " + displayScore);
                     clipDrawable.setLevel(displayScore * 1000);
                 } else {
                     clipDrawable.setLevel(0);
@@ -1379,7 +1465,29 @@ public class HomeFragment extends Fragment {
      * @param id        项目标识
      * @param deltaFloat 浮点增量（可为负）
      */
-    private void applyInterestDeltaForItemFloat(int type, String id, float deltaFloat) {
+    /**
+     * Helper to generate Sheet ID consistent with CourseAdapter
+     */
+    private String getCourseSheetId(Course c) {
+        String fileId = c.fileId == null ? "<nofile>" : c.fileId;
+        String secondary = c.unit;
+        if (secondary == null || secondary.trim().isEmpty()) {
+            secondary = c.sheetName;
+        }
+        if (secondary == null || secondary.trim().isEmpty()) {
+            secondary = "<unknown>";
+        }
+        return fileId + "|" + secondary;
+    }
+    
+    private int getOriginalInterestForCourse(String courseId) {
+        if (courseId == null) return 0;
+        Integer original = originalInterestMap.get(courseId);
+        return original != null ? original : 0;
+    }
+
+    private void applyInterestDeltaForItemFloat(int type, String id, float deltaFloat, java.util.Map<String, Integer> originalInterestMap) {
+        Log.d("HomeFragment", "APPLY_INTEREST: type=" + type + ", id=" + id + ", delta=" + deltaFloat);
         parserExecutor.submit(() -> {
             List<Course> cur = vm.courses.getValue();
             if (cur == null) cur = new ArrayList<>();
@@ -1401,10 +1509,7 @@ public class HomeFragment extends Fragment {
                 if (type == 2) {
                     if (c.id != null && c.id.equals(id)) match = true;
                 } else if (type == 1) {
-                    // Sheet下的所有课程
-                    // Strict match with adapter ID construction (no extra trimming)
-                    String sheetKey = (c.fileId == null ? "<nofile>" : c.fileId) + "|" + (c.sheetName == null ? "<nosheet>" : c.sheetName);
-                    if (id != null && id.equals(sheetKey)) match = true;
+                    if (id != null && id.equals(getCourseSheetId(c))) match = true;
                 } else if (type == 0) {
                     String cf = c.fileId == null ? "<nofile>" : c.fileId;
                     if (cf.equals(targetFile)) match = true;
@@ -1412,20 +1517,28 @@ public class HomeFragment extends Fragment {
 
                 if (match) {
                     int before = c.interest;
-                    // 基于原始分数 + 浮点增量然后四舍五入，保证与视觉一致
-                    int nv = Math.max(0, Math.min(10, Math.round(before + deltaFloat)));
+                    int nv;
+                    if (type == 2) {
+                        nv = Math.max(0, Math.min(10, Math.round(before + deltaFloat)));
+                    } else {
+                        Integer original = originalInterestMap.get(c.id);
+                        int originalScore = (original != null) ? original : 0;
+                        nv = Math.max(0, Math.min(10, Math.round(originalScore + deltaFloat)));
+                    }
                     if (nv != before) {
                         c.interest = nv;
                         changedIds.append(c.id).append("(").append(before).append("->").append(nv).append("),");
+                        Log.d("HomeFragment", "APPLY_INTEREST: Updated " + c.title + " (" + c.id + ") " + before + " -> " + nv);
                     }
                 }
                 updated.add(c);
             }
 
+            Log.d("HomeFragment", "APPLY_INTEREST: Changed IDs: " + changedIds.toString());
+
             if (rv != null) {
                 rv.post(() -> {
                     vm.save(updated);
-                    // 移除延迟刷新，完全依赖LiveData观察者来更新UI，避免数据竞争导致的视觉回退
                 });
             } else {
                 vm.save(updated);
@@ -1442,5 +1555,61 @@ public class HomeFragment extends Fragment {
         } catch (Throwable t) {
             t.printStackTrace();
         }
+    }
+    
+    /**
+     * 创建选项菜单
+     */
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.home_menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+    
+
+    
+    /**
+     * 准备选项菜单（每次显示前调用）
+     */
+    @Override
+    public void onPrepareOptionsMenu(@NonNull Menu menu) {
+        // 设置"设置第一周"菜单项的图标颜色
+        checkFirstWeekDateState(menu);
+        super.onPrepareOptionsMenu(menu);
+    }
+    
+    /**
+     * 处理选项菜单点击事件
+     */
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        // 直接处理菜单项点击
+        if (item.getItemId() == R.id.menu_import) {
+            // 导入课程表
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.setType("*/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            String[] mimeTypes = {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "application/vnd.ms-excel"};
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+            
+            if (openFileLauncher != null) {
+                openFileLauncher.launch(intent);
+            }
+            return true;
+        } else if (item.getItemId() == R.id.menu_set_start_date) {
+            // 设置第一周
+            showSetDateDialog();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+    
+    /**
+     * 检查第一周日期是否已设置
+     */
+    private boolean hasFirstWeekDate() {
+        SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String date = prefs.getString(KEY_FIRST_WEEK_DATE, null);
+        return date != null && !date.isEmpty();
     }
 }

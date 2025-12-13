@@ -21,6 +21,7 @@ import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pku.or.ucourse.R;
@@ -75,9 +76,15 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         boolean allTen = true;
         boolean hasTen = false;
         int tenCount = 0;
+        int totalCount = 0;
+        java.util.Set<String> countedIds = new java.util.HashSet<>();
         
         void update(Course c) {
-            if (c == null) return;
+            if (c == null || c.id == null) return;
+            if (countedIds.contains(c.id)) return; // Prevent duplicate counting
+            countedIds.add(c.id);
+            
+            totalCount++;
             if (c.interest > 0) allZero = false;
             if (c.interest < 10) allTen = false;
             if (c.interest == 10) {
@@ -90,7 +97,11 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             if (!other.allZero) allZero = false;
             if (!other.allTen) allTen = false;
             if (other.hasTen) hasTen = true;
+            // Merging counts is tricky with sets, but for File header (which merges sheets), 
+            // the sheets are disjoint sets of courses, so simple addition is fine.
+            // However, to be safe, we just sum the counts as they are pre-calculated for unique courses in sheets.
             tenCount += other.tenCount;
+            totalCount += other.totalCount;
         }
     }
     
@@ -112,9 +123,15 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     public void setOnItemLongPressListener(OnItemLongPressListener l) { this.longPressListener = l; }
     public void setOnCourseClickListener(OnCourseClickListener l) { this.courseClickListener = l; }
 
+    private HomeViewModel viewModel;
+    
     public CourseAdapter(List<Course> items) {
         setHasStableIds(true);
         setCourses(items);
+    }
+    
+    public void setViewModel(HomeViewModel viewModel) {
+        this.viewModel = viewModel;
     }
 
     /**
@@ -128,6 +145,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         Course course;   // 课程对象（仅课程类型时有值）
         String parentId; // 父ID：Sheet的父=fileId, 课程的父=fileId|sheetName
         int styleState;  // 样式状态（仅Header使用）：10=全10分，0=全0分，-1=单个10分，5=普通
+        int originalInterest; // 原始兴趣分（用于拖拽预览计算）
+        int previewInterest = -1; // 预览分数（用于拖拽时临时显示，-1表示无预览）
     }
 
     /**
@@ -135,9 +154,10 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
      */
     private int calculateStyleState(HeaderStats stats) {
         if (stats == null) return 5;
-        if (stats.allTen) return 10;
+        // Require ALL items to be 10 for the glow effect (yellow)
+        if (stats.totalCount > 0 && stats.tenCount == stats.totalCount) return 10;
         if (stats.allZero) return 0;
-        if (stats.tenCount == 1) return -1;
+        // Removed faint glow (single 10) as requested
         return 5;
     }
 
@@ -202,7 +222,9 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             
             String s = getSecondaryGroupId(c);
             
-            byFile.putIfAbsent(f, new LinkedHashMap<>());
+            if (!byFile.containsKey(f)) {
+                byFile.put(f, new LinkedHashMap<>());
+            }
             Map<String, SheetInfo> fm = byFile.get(f);
             if (!fm.containsKey(s)) {
                 fm.put(s, new SheetInfo(s, c.sheetIndex));
@@ -260,6 +282,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             ci.id = c.id;
                             ci.title = c.title;
                             ci.course = c;
+                            ci.originalInterest = c.interest;
                             ci.parentId = sheetItem.id;
                             out.add(ci);
                         }
@@ -319,7 +342,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             // Prefer computing sheet count from current visible display to reflect expand/collapse state
             int sheetCount = computeVisibleSheetCountForFile(it.id == null ? "<nofile>" : it.id);
             // compute raw total from rawCourses for diagnostics
-            int cachedCount = sheetCountByFile.getOrDefault(it.id == null ? "<nofile>" : it.id, 0);
+            Integer count = sheetCountByFile.get(it.id == null ? "<nofile>" : it.id);
+            int cachedCount = (count != null) ? count : 0;
             int rawCount = 0;
             try {
                 java.util.Set<String> names = new java.util.HashSet<>();
@@ -424,7 +448,8 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             vh.tvTitle.setTextColor(ContextCompat.getColor(vh.itemView.getContext(), R.color.text_secondary));
             
             // 显示课程数量
-            int courseCount = courseCountBySheet.getOrDefault(it.id, 0);
+            Integer count = courseCountBySheet.get(it.id);
+            int courseCount = (count != null) ? count : 0;
             try {
                 android.widget.TextView tvCount = vh.itemView.findViewById(R.id.tv_count);
                 if (tvCount != null) {
@@ -503,11 +528,9 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             vh.tvTitle.setSingleLine(true);
             vh.tvTitle.setEllipsize(TextUtils.TruncateAt.END);
             
-            // Apply style based on score (Gray / Bright Shadow)
-            applyCourseStyle(vh, c);
-            
-            // Render interest score fill and text
-            renderInterestSegments(vh, c.interest);
+            int score = (it.previewInterest != -1) ? it.previewInterest : c.interest;
+            applyCourseStyle(vh, c, score);
+            renderInterestSegments(vh, score);
         }
     }
 
@@ -521,10 +544,14 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 if (it.type == TYPE_SHEET && fileId.equals(it.parentId)) cnt++;
             }
             // If no sheets are currently visible (file collapsed), fall back to cached total sheet count
-            if (cnt == 0) return sheetCountByFile.getOrDefault(fileId, 0);
+            if (cnt == 0) {
+                Integer count = sheetCountByFile.get(fileId);
+                return (count != null) ? count : 0;
+            }
             return cnt;
         } catch (Throwable _t) {
-            return sheetCountByFile.getOrDefault(fileId, 0);
+            Integer count = sheetCountByFile.get(fileId);
+            return (count != null) ? count : 0;
         }
     }
 
@@ -534,11 +561,12 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             // Full bind
             onBindViewHolder(holder, position);
         } else {
-            // Partial update for interest changes
             Item it = display.get(position);
             VH vh = (VH) holder;
             if (it != null && it.type == TYPE_COURSE && it.course != null) {
-                renderInterestSegments(vh, it.course.interest);
+                int score = (it.previewInterest != -1) ? it.previewInterest : it.course.interest;
+                renderInterestSegments(vh, score);
+                applyCourseStyle(vh, it.course, score);
             }
         }
     }
@@ -681,6 +709,16 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     public String getIdForPosition(int position) {
         if (position < 0 || position >= display.size()) return null;
         return display.get(position).id;
+    }
+
+    /**
+     * 获取原始课程列表
+     * 用于外部访问adapter内部的课程数据
+     * 
+     * @return 原始课程列表
+     */
+    public List<Course> getRawCourses() {
+        return rawCourses;
     }
 
     public String getParentIdForPosition(int position) {
@@ -946,7 +984,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 setCardBackground(rootView, Color.parseColor("#EEEEEE"));
                 titleColor = Color.parseColor("#9E9E9E");
                 typeFaceStyle = Typeface.NORMAL;
-            } else if (stats.allTen) {
+            } else if (stats.totalCount > 0 && stats.tenCount == stats.totalCount) {
                 // Rule B: Bright Glow: All 10 -> bg_card_glow_10, Yellow Glow Text
                 rootView.setBackgroundResource(R.drawable.bg_card_glow_10);
                 // REMOVED setCardBackground(rootView, color); because it overwrites the glow layer (layer 0)
@@ -975,10 +1013,6 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                         rootView.invalidate();
                     }
                 } catch (Throwable _t) {}
-            } else if (stats.tenCount == 1) {
-                // Rule E: Faint Shadow: Single 10 (and not all 10) -> bg_card_glow_faint, Bold Text
-                rootView.setBackgroundResource(R.drawable.bg_card_glow_faint);
-                setCardBackground(rootView, color);
             } else {
                 // Rule D: Standard -> Bold Text
                 rootView.setBackgroundResource(R.drawable.bg_item_card);
@@ -1019,13 +1053,12 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         } catch (Throwable _t) {}
     }
 
-    private void applyCourseStyle(VH vh, Course c) {
+    private void applyCourseStyle(VH vh, Course c, int score) {
         if (vh == null || vh.rootCard == null) return;
         View rootView = vh.rootCard;
         Context ctx = rootView.getContext();
         float density = ctx.getResources().getDisplayMetrics().density;
         
-        // Default: No elevation to remove "gray area" artifacts
         float elevation = 0f;
         int titleColor = ContextCompat.getColor(ctx, R.color.header_text_color);
         int metaColor = ContextCompat.getColor(ctx, R.color.text_secondary);
@@ -1033,48 +1066,38 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         int shadowColor = 0;
         
         if (c != null) {
-            if (c.interest == 10) {
-                // Use special glow drawable
+            if (score == 10) {
                 rootView.setBackgroundResource(R.drawable.bg_card_glow_10);
-                elevation = 0f; // Glow is in the drawable
+                elevation = 0f;
                 shadowColor = Color.parseColor("#FFD700");
                 
-                // Reset outline provider to default as we don't need clipping anymore
                 rootView.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
                 rootView.setClipToOutline(false);
                 
-                // Ensure all layers of the glow drawable are fully visible - FIX for initial glow
                 try {
                     Drawable bg = rootView.getBackground();
                     if (bg != null) {
-                        bg = bg.mutate(); // Fix: Mutate to avoid shared state issues
+                        bg = bg.mutate();
                         if (bg instanceof LayerDrawable) {
                             LayerDrawable ld = (LayerDrawable) bg;
-                            // Set alpha for all layers to ensure glow is visible
                             for (int i = 0; i < ld.getNumberOfLayers(); i++) {
                                 Drawable layer = ld.getDrawable(i);
                                 if (layer != null) {
                                     layer.setAlpha(255);
-                                    layer.setVisible(true, false); // Ensure visible
-                                    // Force redraw to ensure glow is visible on app launch
+                                    layer.setVisible(true, false);
                                     layer.invalidateSelf();
                                 }
                             }
                         }
-                        // Force the view to redraw with the new background
                         rootView.invalidate();
-                        rootView.requestLayout(); // Request layout to ensure proper sizing
+                        rootView.requestLayout();
                     }
-                } catch (Throwable _t) {
-                    // Ignore errors
-                }
+                } catch (Throwable _t) {}
             } else {
-                // Standard card
                 rootView.setBackgroundResource(R.drawable.bg_item_card);
                 
-                if (c.interest == 0) {
-                    // Gray text for 0 score
-                    titleColor = Color.parseColor("#9E9E9E"); // Lighter gray
+                if (score == 0) {
+                    titleColor = Color.parseColor("#9E9E9E");
                     metaColor = Color.parseColor("#BDBDBD");
                     typeFaceStyle = Typeface.NORMAL;
                 }
@@ -1082,19 +1105,15 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 rootView.setClipToOutline(false);
             }
             
-            // Update text colors and styles
             if (vh.tvTitle != null) {
                 vh.tvTitle.setTextColor(titleColor);
                 vh.tvTitle.setTypeface(null, typeFaceStyle);
-                // Remove text shadow effect
                 vh.tvTitle.setShadowLayer(0, 0, 0, 0);
             }
             if (vh.tvMeta != null) vh.tvMeta.setTextColor(metaColor);
             
-            // Update progress bar immediately
-            renderInterestSegments(vh, c.interest);
+            renderInterestSegments(vh, score);
             
-            // Apply elevation (which is 0 now)
             rootView.setElevation(elevation);
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 rootView.setStateListAnimator(null);
@@ -1135,6 +1154,10 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
      * Used for real-time drag feedback
      */
     public void updateItemStyle(RecyclerView.ViewHolder vh, int score, int type) {
+        try {
+            android.util.Log.d("CourseAdapterDebug", "updateItemStyle: score=" + score + " type=" + type);
+        } catch (Throwable _t) {}
+
         if (vh == null || !(vh instanceof VH)) return;
         VH holder = (VH) vh;
         View rootView = holder.rootCard;
@@ -1301,6 +1324,75 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     /**
+     * Preview children styles when dragging a header.
+     * Replaces Fragment-side logic to ensure data consistency.
+     */
+    public void previewChildrenForHeaderDrag(RecyclerView rv, int headerPos, float delta, java.util.Map<String, Integer> originalInterestMap) {
+        if (rv == null || headerPos == RecyclerView.NO_POSITION) return;
+        if (headerPos < 0 || headerPos >= display.size()) return;
+        
+        Item headerItem = display.get(headerPos);
+        
+        String fileId = null;
+        String secondaryKey = null;
+        
+        if (headerItem.type == TYPE_SHEET) {
+             String[] parts = headerItem.id.split("\\|");
+             if (parts.length >= 2) {
+                 fileId = parts[0];
+                 secondaryKey = parts[1];
+             }
+        } else if (headerItem.type == TYPE_FILE) {
+             fileId = headerItem.id;
+        } else {
+            return;
+        }
+        
+        for (int i = 0; i < display.size(); i++) {
+            Item child = display.get(i);
+            
+            boolean match = false;
+            if (headerItem.type == TYPE_SHEET) {
+                if (child.type == TYPE_COURSE && child.course != null) {
+                    String cFile = child.course.fileId == null ? "<nofile>" : child.course.fileId;
+                    if (cFile.equals(fileId) && getSecondaryGroupId(child.course).equals(secondaryKey)) {
+                        match = true;
+                    }
+                }
+            } else if (headerItem.type == TYPE_FILE) {
+                if (child.type == TYPE_COURSE && child.course != null) {
+                    String cFile = child.course.fileId == null ? "<nofile>" : child.course.fileId;
+                    if (cFile.equals(fileId)) {
+                        match = true;
+                    }
+                }
+            }
+            
+            if (match) {
+                int base = originalInterestMap.getOrDefault(child.course.id, 0);
+                int displayScore = Math.max(0, Math.min(10, base + (int)delta));
+
+                try {
+                    android.util.Log.d("CourseAdapterDebug", "previewHeaderDrag: child=" + child.title + 
+                        " base=" + base + " originalInterest=" + child.originalInterest + " course.interest=" + child.course.interest + 
+                        " delta=" + delta + " new=" + displayScore + " position=" + i);
+                } catch (Throwable _t) {}
+                
+                if (child.previewInterest != displayScore) {
+                    child.previewInterest = displayScore;
+
+                    RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(i);
+                    if (vh != null) {
+                        updateItemStyle(vh, displayScore, TYPE_COURSE);
+                    } else {
+                        notifyItemChanged(i, "drag_update");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Update header style based on a drag delta applied to all its children.
      * This calculates the hypothetical state of children and updates the header visual.
      */
@@ -1345,13 +1437,13 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
              
              if (match) {
                  hasAny = true;
-                 // Calculate hypothetical score
-                 float newScore = Math.max(0, Math.min(10, c.interest + delta));
+                 // Calculate hypothetical score using integer delta to match incremental logic
+                 float newScore = Math.max(0, Math.min(10, c.interest + (int)delta));
                  
-                 // Use epsilon for float comparison
-                 if (newScore < 9.5f) allTen = false;
-                 if (newScore > 0.1f) allZero = false;
-                 if (newScore >= 9.5f) tenCount++;
+                 // Strict thresholds
+                 if (newScore < 10.0f) allTen = false;
+                 if (newScore > 0.0f) allZero = false;
+                 if (newScore >= 10.0f) tenCount++;
              }
         }
         
@@ -1359,10 +1451,10 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         
         // Determine state code
         int stateScore;
-        if (allTen) stateScore = 10;
+        // Strict check: Only all 10s -> 10
+        if (allTen && tenCount > 0) stateScore = 10;
         else if (allZero) stateScore = 0;
-        else if (tenCount == 1) stateScore = -1; // Faint Glow (Single 10)
-        else stateScore = 5; // Standard
+        else stateScore = 5; // Standard (removed faint glow)
         
         updateItemStyle(vh, stateScore, item.type);
     }
@@ -1407,17 +1499,17 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     score = c.interest;
                 }
                 
-                if (score < 9.5f) sAllTen = false;
-                if (score > 0.1f) sAllZero = false;
-                if (score >= 9.5f) sTenCount++;
+                if (score < 10.0f) sAllTen = false;
+                if (score > 0.0f) sAllZero = false;
+                if (score >= 10.0f) sTenCount++;
             }
         }
         
         if (sHasAny) {
             int stateScore;
-            if (sAllTen) stateScore = 10;
+            // Strict check: Only all 10s -> 10
+            if (sAllTen && sTenCount > 0) stateScore = 10;
             else if (sAllZero) stateScore = 0;
-            else if (sTenCount == 1) stateScore = -1;
             else stateScore = 5;
             
             int sheetPos = findPositionById(sheetId);
@@ -1444,17 +1536,17 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     score = c.interest;
                 }
                 
-                if (score < 9.5f) fAllTen = false;
-                if (score > 0.1f) fAllZero = false;
-                if (score >= 9.5f) fTenCount++;
+                if (score < 10.0f) fAllTen = false;
+                if (score > 0.0f) fAllZero = false;
+                if (score >= 10.0f) fTenCount++;
             }
         }
         
         if (fHasAny) {
             int stateScore;
-            if (fAllTen) stateScore = 10;
+            // Strict check: Only all 10s -> 10
+            if (fAllTen && fTenCount > 0) stateScore = 10;
             else if (fAllZero) stateScore = 0;
-            else if (fTenCount == 1) stateScore = -1;
             else stateScore = 5;
             
             int filePos = findPositionById(fileId);
@@ -1491,6 +1583,10 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
      * Used for drag interactions
      */
     public void updateItemScore(RecyclerView rv, int position, int newScore) {
+        try {
+            android.util.Log.d("CourseAdapterDebug", "updateItemScore: pos=" + position + " newScore=" + newScore);
+        } catch (Throwable _t) {}
+
         if (position < 0 || position >= display.size()) return;
         Item item = display.get(position);
         if (item.type != TYPE_COURSE || item.course == null) return;
@@ -1503,6 +1599,10 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     c.interest = newScore;
                     break;
                 }
+            }
+            // 保存更改到ViewModel
+            if (viewModel != null) {
+                viewModel.save(rawCourses);
             }
         } catch (Throwable _t) {}
         
@@ -1534,10 +1634,11 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         statsMap.put(fileId, fileStats);
         
         // 3. Update Visuals
-        // Update Course Item
+        item.previewInterest = -1;
+        
         RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(position);
         if (vh instanceof VH) {
-             applyCourseStyle((VH)vh, item.course);
+             applyCourseStyle((VH)vh, item.course, newScore);
              renderInterestSegments((VH)vh, newScore); 
         }
         
@@ -1557,6 +1658,14 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
              if (fVh instanceof VH) {
                  applyHeaderStyle(((VH)fVh).rootCard, fileStats, R.color.background_color);
              }
+        }
+    }
+    
+    public void clearPreviewInterest() {
+        for (Item it : display) {
+            if (it != null) {
+                it.previewInterest = -1;
+            }
         }
     }
 }

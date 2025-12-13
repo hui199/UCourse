@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:gravity="bottom">
+    
+    <item
+        android:id="@+id/menu_set_max_plans"
+        android:title="设置最大推荐方案数量"
+        android:icon="@drawable/ic_chevron_right"
+        app:showAsAction="never" />
+        
+</menu>

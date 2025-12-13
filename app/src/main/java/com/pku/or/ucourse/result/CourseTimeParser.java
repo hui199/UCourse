@@ -35,6 +35,8 @@ public class CourseTimeParser {
 
     public static int[] parseWeekRange(String raw) {
         if (raw == null) return new int[]{1, 16};
+        
+        // 先尝试匹配带"周"字的格式
         Matcher m = WEEK_RANGE_PAT.matcher(raw);
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
@@ -48,8 +50,29 @@ public class CourseTimeParser {
                  found = true;
              } catch (Exception e) {}
         }
-        if (!found) return new int[]{1, 16};
-        return new int[]{min, max};
+        if (found) return new int[]{min, max};
+        
+        // 如果没有找到带"周"字的格式，尝试匹配不带"周"字的格式
+        Matcher m2 = Pattern.compile("(\\d+)(?:[-~](\\d+))?").matcher(raw);
+        min = Integer.MAX_VALUE;
+        max = Integer.MIN_VALUE;
+        found = false;
+        while(m2.find()) {
+             try {
+                 int start = Integer.parseInt(m2.group(1));
+                 int end = (m2.group(2) != null && !m2.group(2).isEmpty()) ? Integer.parseInt(m2.group(2)) : start;
+                 // 只匹配合理的周次范围（1-30）
+                 if (start >= 1 && start <= 30 && end >= 1 && end <= 30) {
+                     if (start < min) min = start;
+                     if (end > max) max = end;
+                     found = true;
+                 }
+             } catch (Exception e) {}
+        }
+        if (found) return new int[]{min, max};
+        
+        // 如果仍然没有找到，返回默认值
+        return new int[]{1, 16};
     }
 
     public static List<TimeSlot> parse(String raw) {

@@ -114,6 +114,40 @@ public class WeekTimeData implements Serializable {
     }
 
     /**
+     * 按 day index (0=周一 .. 6=周日) 获取对应的 TimeRange 列表，忽略具体日期。
+     * 遍历所有存储的日期，返回匹配星期几的时间段。
+     */
+    public List<TimeRange> getGenericTimeRangesByDayIndex(int dayIndex) {
+        List<TimeRange> result = new ArrayList<>();
+        if (dayIndex < 0 || dayIndex > 6) return result;
+
+        // Calculate Calendar.DAY_OF_WEEK
+        // dayIndex 0 (Mon) -> Calendar.MONDAY (2)
+        // ...
+        // dayIndex 5 (Sat) -> Calendar.SATURDAY (7)
+        // dayIndex 6 (Sun) -> Calendar.SUNDAY (1)
+        int targetDayOfWeek = (dayIndex == 6) ? Calendar.SUNDAY : (dayIndex + 2);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        Calendar cal = Calendar.getInstance();
+
+        for (Map.Entry<String, List<TimeRange>> entry : dateTimeData.entrySet()) {
+            try {
+                Date d = sdf.parse(entry.getKey());
+                if (d != null) {
+                    cal.setTime(d);
+                    if (cal.get(Calendar.DAY_OF_WEEK) == targetDayOfWeek) {
+                        result.addAll(entry.getValue());
+                    }
+                }
+            } catch (Exception e) {
+                // ignore invalid keys
+            }
+        }
+        return result;
+    }
+
+    /**
      * 清空所有数据
      */
     public void clear() {

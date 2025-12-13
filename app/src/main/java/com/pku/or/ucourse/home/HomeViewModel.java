@@ -48,12 +48,26 @@ public class HomeViewModel extends AndroidViewModel {
      * @param list 课程列表
      */
     public void save(List<Course> list) {
+        android.util.Log.d("HomeViewModel", "SAVE: Saving " + (list != null ? list.size() : 0) + " courses.");
+        if (list != null) {
+            int nonZeroCount = 0;
+            for (Course c : list) {
+                if (c.interest > 0) {
+                    nonZeroCount++;
+                    if (c.title != null && c.title.contains("媒体与国际关系")) {
+                        android.util.Log.d("HomeViewModel", "SAVE_CHECK: 媒体与国际关系 interest=" + c.interest);
+                    }
+                }
+            }
+            android.util.Log.d("HomeViewModel", "SAVE: Non-zero interest count: " + nonZeroCount);
+        }
+        
         String json = gson.toJson(list);
         getApplication().getSharedPreferences("app_prefs", 0).edit().putString(PREF_KEY, json).apply();
         
         // 如果在主线程，同步更新LiveData（确保调用者立即能读到最新值）
         // 否则使用postValue在主线程调度更新
-        if (android.os.Looper.getMainLooper().isCurrentThread()) {
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
             courses.setValue(list);
         } else {
             courses.postValue(list);

@@ -304,6 +304,11 @@ public class TimeTableView extends View {
 
         if (heightMode == MeasureSpec.EXACTLY) {
             height = MeasureSpec.getSize(heightMeasureSpec);
+            // 如果父容器指定了确切高度，根据可用高度调整cellHeight，让内容填满空间
+            int availableHeight = height - (int)headerHeight - getPaddingTop() - getPaddingBottom();
+            if (availableHeight > 0) {
+                cellHeight = availableHeight / (float)ROW_COUNT;
+            }
         } else {
             height = Math.min(desiredHeight, MeasureSpec.getSize(heightMeasureSpec));
         }

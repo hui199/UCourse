@@ -4,12 +4,16 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
 import com.google.gson.Gson;
@@ -28,8 +32,6 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
     private static final String KEY_CURRENT_DATE = "current_date";
 
     private TimeTableView timeTableView;
-    private Button clearButton;
-    private Button selectDateButton;
 
     private WeekTimeData currentWeekData;
     private TimeViewModel timeViewModel;
@@ -53,37 +55,21 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
         timeViewModel = new ViewModelProvider(requireActivity()).get(TimeViewModel.class);
         loadData();
         setupListeners();
+        
+        // 启用选项菜单
+        setHasOptionsMenu(true);
 
         return view;
     }
 
     private void initViews(View view) {
         timeTableView = view.findViewById(R.id.timeTableView);
-        clearButton = view.findViewById(R.id.clearButton);
-        selectDateButton = view.findViewById(R.id.selectDateButton);
 
         currentWeekData = new WeekTimeData();
     }
 
     private void setupListeners() {
         timeTableView.addOnTimeSelectListener(this);
-
-        clearButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                timeTableView.clearTimeSlots();
-                currentWeekData.clear();
-                saveData();
-                Toast.makeText(getContext(), "已清空所有时间段", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        selectDateButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                timeTableView.showDatePickerDialog(getContext());
-            }
-        });
     }
 
     private void loadData() {
@@ -252,5 +238,35 @@ public class TimeFragment extends Fragment implements OnTimeSelectListener {
         }
         saveData(true); // 确保同步
     // onDestroyView: saved data and removed listeners
+    }
+    
+    /**
+     * 创建选项菜单
+     */
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.time_menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+    
+    /**
+     * 处理选项菜单点击事件
+     */
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        // 直接处理菜单项点击
+        if (item.getItemId() == R.id.menu_select_date) {
+            // 选择日期
+            timeTableView.showDatePickerDialog(getContext());
+            return true;
+        } else if (item.getItemId() == R.id.menu_clear_all) {
+            // 清空全部
+            timeTableView.clearTimeSlots();
+            currentWeekData.clear();
+            saveData();
+            Toast.makeText(getContext(), "已清空所有时间段", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 }

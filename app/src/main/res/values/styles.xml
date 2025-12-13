@@ -9,22 +9,23 @@
         <item name="android:colorBackground">#F5F7FA</item>
         <item name="android:windowBackground">#F5F7FA</item>
     </style>
-
+    
     <!-- 解决方案卡片样式 -->
     <style name="SolutionCardStyle">
         <item name="android:background">#FFFFFF</item>
         <item name="android:elevation">8dp</item>
         <item name="android:radius">16dp</item>
     </style>
-
+    
     <!-- 分段卡片样式 -->
     <style name="SegmentCardStyle">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">match_parent</item>
-        <item name="android:layout_marginHorizontal">6dp</item>
+        <item name="android:layout_marginLeft">6dp</item>
+        <item name="android:layout_marginRight">6dp</item>
         <item name="android:padding">8dp</item>
     </style>
-
+    
     <!-- 分数徽章样式 -->
     <style name="ScoreBadgeStyle">
         <item name="android:layout_width">wrap_content</item>
@@ -34,5 +35,11 @@
         <item name="android:textColor">#FFFFFF</item>
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
+    </style>
+    
+    <!-- 弹出菜单样式 -->
+    <style name="MyPopupMenuStyle" parent="ThemeOverlay.AppCompat.Light">
+        <item name="android:overlapAnchor">false</item>
+        <item name="android:popupBackground">#FFFFFF</item>
     </style>
 </resources>

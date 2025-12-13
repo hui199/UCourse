@@ -5,6 +5,7 @@ import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.pku.or.ucourse.utils.PerformanceLogger;
+import com.pku.or.ucourse.home.HomeFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
@@ -44,8 +45,8 @@ public class MainActivity extends AppCompatActivity {
 
         // 恢复或创建Fragments
         if (savedInstanceState == null) {
-            // 首次创建：使用home包中的HomeFragment（包含导入逻辑）
-            homeFragment = new com.pku.or.ucourse.home.HomeFragment();
+            // 首次创建：使用根包中的HomeFragment
+            homeFragment = new HomeFragment();
             timeFragment = new TimeFragment();
             resultFragment = new ResultFragment();
 
@@ -88,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
         // 确保底部导航的初始高亮与当前显示的Fragment一致
         if (activeFragment == homeFragment) {
             bottomNavigationView.setSelectedItemId(R.id.navigation_home);
-            if (getSupportActionBar() != null) getSupportActionBar().setTitle("课程选择 v1.0.0");
+            if (getSupportActionBar() != null) getSupportActionBar().setTitle("课程选择");
         } else if (activeFragment == timeFragment) {
             bottomNavigationView.setSelectedItemId(R.id.navigation_time);
             if (getSupportActionBar() != null) getSupportActionBar().setTitle("时间设置");
@@ -110,8 +111,8 @@ public class MainActivity extends AppCompatActivity {
         }
         
         if (getSupportActionBar() != null) {
-            if (targetFragment instanceof com.pku.or.ucourse.home.HomeFragment) {
-                getSupportActionBar().setTitle("课程选择 v1.0.0");
+            if (targetFragment instanceof HomeFragment) {
+                getSupportActionBar().setTitle("课程选择");
             } else if (targetFragment instanceof TimeFragment) {
                 getSupportActionBar().setTitle("时间设置");
             } else if (targetFragment instanceof ResultFragment) {

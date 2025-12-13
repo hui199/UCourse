@@ -122,7 +122,14 @@ public class RecommendationSolver {
     }
 
     public List<Solution> solve() {
-        Log.d(UCourse_TAG, "开始求解... 原始课程数: " + allCourses.size());
+        // 只有在Android环境中才进行日志记录
+        if (android.os.Build.VERSION.SDK_INT >= 1) {
+            Log.d(UCourse_TAG, "SOLVER_DEBUG: 开始求解... 原始课程数: " + allCourses.size());
+            Log.d(UCourse_TAG, "SOLVER_DEBUG: 接收的课程列表:");
+            for (Course c : allCourses) {
+                Log.d(UCourse_TAG, "SOLVER_DEBUG:   - " + (c != null ? (c.title + ", 兴趣分: " + c.interest + ", ID: " + c.id + ", 原始时间: " + (c.rawTime != null ? c.rawTime : "null")) : "null课程"));
+            }
+        }
         nodesVisited.set(0);
         prunedCount.set(0);
         timedOut = false;
@@ -130,15 +137,48 @@ public class RecommendationSolver {
         // 1. 预处理与过滤
         long filterStart = System.currentTimeMillis();
         List<Course> feasible = new ArrayList<>();
+        int interestGreaterThanZero = 0;
+        int hasValidTimeSlots = 0;
+        int withinFreeTime = 0;
+        
         for (Course c : allCourses) {
-            if (c == null) continue;
-            if (c.interest <= 0) continue; // 排除无兴趣课程
+            if (c == null) {
+                Log.d(UCourse_TAG, "SOLVER_DEBUG: 跳过空课程");
+                continue;
+            }
+            
+            Log.d(UCourse_TAG, "SOLVER_DEBUG: 处理课程: " + c.title + ", 兴趣分: " + c.interest + ", ID: " + c.id + ", 原始时间: " + (c.rawTime != null ? c.rawTime : "null"));
+            
+            // 允许兴趣分为0的课程，仅过滤兴趣分<0的课程
+            if (c.interest < 0) {
+                if (android.os.Build.VERSION.SDK_INT >= 1) {
+                    Log.d(UCourse_TAG, "SOLVER_DEBUG:  排除: 兴趣分<0");
+                }
+                continue;
+            }
+            interestGreaterThanZero++;
             
             List<TimeSlot> slots = courseTimeSlots == null ? null : courseTimeSlots.get(c.id);
-            if (slots == null || slots.isEmpty()) continue;
+            // 过滤掉没有有效时间槽的课程
+            if (slots == null || slots.isEmpty()) {
+                Log.d(UCourse_TAG, "SOLVER_DEBUG:  排除: 无有效时间槽");
+                continue;
+            }
+            hasValidTimeSlots++;
+            
+            Log.d(UCourse_TAG, "SOLVER_DEBUG:  课程时间槽:");
+            for (TimeSlot slot : slots) {
+                String[] weekDays = {"一", "二", "三", "四", "五", "六", "日"};  // 0=周一, 6=周日
+                String weekDayStr = weekDays[Math.min(slot.getDay(), 6)];
+                Log.d(UCourse_TAG, "SOLVER_DEBUG:    星期" + weekDayStr + ", 节次: " + slot.getStartSection() + "-" + slot.getEndSection());
+            }
             
             if (isWithinFreeTime(slots)) {
                 feasible.add(c);
+                withinFreeTime++;
+                Log.d(UCourse_TAG, "SOLVER_DEBUG:  包含: 时间在空闲范围内");
+            } else {
+                Log.d(UCourse_TAG, "SOLVER_DEBUG:  排除: 时间不在空闲范围内");
             }
         }
         
@@ -146,7 +186,12 @@ public class RecommendationSolver {
         // 次级排序：课时少的优先（单位时间收益高），但这里简单起见只用兴趣分
         Collections.sort(feasible, (a, b) -> Integer.compare(b.interest, a.interest));
         
-        Log.d(UCourse_TAG, "可行课程数: " + feasible.size() + ", 预处理耗时: " + (System.currentTimeMillis() - filterStart) + "ms");
+        Log.d(UCourse_TAG, "SOLVER_DEBUG: 预处理统计: 原始课程数=" + allCourses.size() + 
+              ", 兴趣分>0=" + interestGreaterThanZero + 
+              ", 有效时间槽=" + hasValidTimeSlots + 
+              ", 空闲时间内=" + withinFreeTime + 
+              ", 最终可行课程数=" + feasible.size());
+        Log.d(UCourse_TAG, "SOLVER_DEBUG: 可行课程数: " + feasible.size() + ", 预处理耗时: " + (System.currentTimeMillis() - filterStart) + "ms");
         
         // Estimate search space: 2^N
         // If N > 60, we cap at Long.MAX_VALUE
@@ -220,7 +265,9 @@ public class RecommendationSolver {
         long elapsed = System.currentTimeMillis() - startTime.get();
         lastSummary = String.format("Nodes: %d, Pruned: %d, Time: %dms, Solutions: %d -> %d", 
                 nodesVisited.get(), prunedCount.get(), elapsed, bestSolutions.size(), finalSolutions.size());
-        Log.d(UCourse_TAG, "求解结束: " + lastSummary);
+        if (android.os.Build.VERSION.SDK_INT >= 1) {
+            Log.d(UCourse_TAG, "求解结束: " + lastSummary);
+        }
         
         return finalSolutions;
     }
@@ -431,21 +478,59 @@ public class RecommendationSolver {
     }
 
     private boolean isWithinFreeTime(List<TimeSlot> slots) {
+        Log.d(UCourse_TAG, "FREETIME_DEBUG: 检查时间槽是否在空闲时间内");
+        
         // 如果用户没有设置空闲时间，默认所有时间都可用
-        if (freeTimes == null) return true;
+        if (freeTimes == null) {
+            Log.d(UCourse_TAG, "FREETIME_DEBUG:  无空闲时间设置，默认所有时间可用");
+            return true;
+        }
+        
+        Log.d(UCourse_TAG, "FREETIME_DEBUG:  空闲时间数据存在");
+        
         for (TimeSlot ts : slots) {
-            List<WeekTimeData.TimeRange> ranges = freeTimes.getDateTimeRangesByDayIndex(ts.getDay());
-            // 如果某天没有设置空闲时间，且用户有设置其他天的空闲时间，说明这天不空闲？
-            // 通常WeekTimeData如果为空说明全天不空闲（只有选中的才是空闲）
-            // 但如果用户完全没用过TimeFragment，freeTimes可能是空的或者全空的。
-            // 这里假设WeekTimeData包含用户明确标记的"空闲"时间段。
-            if (ranges == null || ranges.isEmpty()) return false;
+            String[] weekDays = {"一", "二", "三", "四", "五", "六", "日"};  // 0=周一, 6=周日
+            String weekDayStr = weekDays[Math.min(ts.getDay(), 6)];
+            Log.d(UCourse_TAG, "FREETIME_DEBUG:  检查时间槽: 星期" + weekDayStr + ", 节次" + ts.getStartSection() + "-" + ts.getEndSection());
+            
+            // 直接按星期查找空闲时间范围 (0=Mon...6=Sun)
+            List<WeekTimeData.TimeRange> ranges = freeTimes.getGenericTimeRangesByDayIndex(ts.getDay());
+            Log.d(UCourse_TAG, "FREETIME_DEBUG:    按星期查找的空闲时间范围数: " + (ranges == null ? "0" : ranges.size()));
+            
+            // Fallback: If no ranges found for that day of week, try to check if there are any date-specific ranges
+            if (ranges == null || ranges.isEmpty()) {
+                Log.d(UCourse_TAG, "FREETIME_DEBUG:    按星期未找到，尝试按日期查找");
+                ranges = new ArrayList<>();
+                // Note: We don't have a specific date for the course time slots, so we can't call getDateTimeRanges(Date)
+                Log.d(UCourse_TAG, "FREETIME_DEBUG:    按日期查找不可用，因为没有课程的具体日期信息");
+            }
+
+            if (ranges == null || ranges.isEmpty()) {
+                Log.d(UCourse_TAG, "FREETIME_DEBUG:    未找到该天的空闲时间范围，默认允许所有时间");
+                continue; // 如果没有设置空闲时间，默认允许该时间槽
+            }
+            
             boolean ok = false;
             for (WeekTimeData.TimeRange r : ranges) {
-                if (ts.getStartSection() >= r.getStartSection() && ts.getEndSection() <= r.getEndSection()) { ok = true; break; }
+                Log.d(UCourse_TAG, "FREETIME_DEBUG:    检查空闲时间范围: " + r.getStartSection() + "-" + r.getEndSection());
+                boolean matches = ts.getStartSection() >= r.getStartSection() && ts.getEndSection() <= r.getEndSection();
+                Log.d(UCourse_TAG, "FREETIME_DEBUG:      匹配结果: " + matches + " (课程起始=" + ts.getStartSection() + ", 空闲起始=" + r.getStartSection() + ", 课程结束=" + ts.getEndSection() + ", 空闲结束=" + r.getEndSection() + ")");
+                
+                if (matches) {
+                    ok = true;
+                    break;
+                }
             }
-            if (!ok) return false;
+            
+            if (!ok) {
+                Log.d(UCourse_TAG, "FREETIME_DEBUG:    该时间槽不在任何空闲时间范围内");
+                return false;
+            } else {
+                Log.d(UCourse_TAG, "FREETIME_DEBUG:    该时间槽在空闲时间范围内");
+            }
         }
+        
+        Log.d(UCourse_TAG, "FREETIME_DEBUG: 所有时间槽都在空闲时间内，返回true");
         return true;
     }
 }

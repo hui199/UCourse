@@ -15,6 +15,9 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import com.pku.or.ucourse.utils.PerformanceLogger;
@@ -22,6 +25,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -71,6 +75,18 @@ public class ResultFragment extends Fragment {
     private Map<String, List<Course>> groupToOriginalCourses; // 组ID到原始课程列表的映射
     private Map<String, Integer> courseFrequency = new HashMap<>(); // 课程频率统计
     private int totalSolutionsCount = 0; // 总方案数
+    private int maxRecommendations = 10; // 默认最大推荐方案数量
+    private static final int MIN_RECOMMENDATIONS = 1;
+    private static final int MAX_RECOMMENDATIONS = 10;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true); // 启用菜单
+        
+        // 从SharedPreferences加载最大推荐方案数量
+        loadMaxRecommendations();
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -91,9 +107,86 @@ public class ResultFragment extends Fragment {
         homeViewModel = new ViewModelProvider(requireActivity()).get(HomeViewModel.class);
         
         // 设置按钮点击事件
-        btnGenerate.setOnClickListener(view -> generateRecommendations());
+        btnGenerate.setOnClickListener(view -> {
+            // 记录点击前的输入数据
+            Log.d(TAG, "BUTTON_CLICK: 生成推荐按钮点击 - 前");
+            Log.d(TAG, "BUTTON_CLICK: 输入数据 - 课程数量: " + (homeViewModel != null && homeViewModel.courses.getValue() != null ? homeViewModel.courses.getValue().size() : 0));
+            Log.d(TAG, "BUTTON_CLICK: 输入数据 - 最大推荐数: " + maxRecommendations);
+            
+            generateRecommendations();
+            
+            // 记录点击后的输出数据
+            Log.d(TAG, "BUTTON_CLICK: 生成推荐按钮点击 - 后");
+            // 推荐结果数量将在generateRecommendations方法内部记录
+        });
 
         return v;
+    }
+
+    // 从SharedPreferences加载最大推荐方案数量
+    private void loadMaxRecommendations() {
+        try {
+            android.content.SharedPreferences prefs = requireContext().getSharedPreferences("ucourse_prefs", android.content.Context.MODE_PRIVATE);
+            int value = prefs.getInt("max_recommendations", 10);
+            // 确保值在有效范围内
+            maxRecommendations = Math.max(MIN_RECOMMENDATIONS, Math.min(MAX_RECOMMENDATIONS, value));
+        } catch (Exception e) {
+            // 如果加载失败，使用默认值
+            maxRecommendations = 10;
+            Log.e(TAG, "加载最大推荐方案数量失败", e);
+        }
+    }
+
+    // 保存最大推荐方案数量到SharedPreferences
+    private void saveMaxRecommendations(int value) {
+        try {
+            android.content.SharedPreferences prefs = requireContext().getSharedPreferences("ucourse_prefs", android.content.Context.MODE_PRIVATE);
+            android.content.SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt("max_recommendations", value);
+            editor.apply();
+        } catch (Exception e) {
+            Log.e(TAG, "保存最大推荐方案数量失败", e);
+        }
+    }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.result_menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.menu_set_max_plans) {
+            showMaxRecommendationsDialog();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    // 显示最大推荐方案数量设置对话框
+    private void showMaxRecommendationsDialog() {
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
+        builder.setTitle("设置最大推荐方案数量");
+        
+        // 创建一个数字选择器
+        final android.widget.NumberPicker numberPicker = new android.widget.NumberPicker(requireContext());
+        numberPicker.setMinValue(MIN_RECOMMENDATIONS);
+        numberPicker.setMaxValue(MAX_RECOMMENDATIONS);
+        numberPicker.setValue(maxRecommendations);
+        
+        builder.setView(numberPicker);
+        
+        builder.setPositiveButton("确定", (dialog, which) -> {
+            int newValue = numberPicker.getValue();
+            maxRecommendations = newValue;
+            saveMaxRecommendations(newValue);
+            Toast.makeText(requireContext(), "最大推荐方案数量已设置为 " + newValue, Toast.LENGTH_SHORT).show();
+        });
+        
+        builder.setNegativeButton("取消", null);
+        
+        builder.show();
     }
 
     /**
@@ -139,66 +232,26 @@ public class ResultFragment extends Fragment {
             }
             List<Course> tempCourses = rawCourses == null ? new ArrayList<>() : new ArrayList<>(rawCourses);
 
-            // Filter ended courses based on first week date
-            try {
-                android.content.SharedPreferences prefs = requireContext().getSharedPreferences("ucourse_prefs", android.content.Context.MODE_PRIVATE);
-                String firstWeekStr = prefs.getString("first_week_date", null);
-                if (firstWeekStr != null) {
-                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
-                    java.util.Date firstWeekDate = sdf.parse(firstWeekStr);
-                    java.util.Calendar currentCal = java.util.Calendar.getInstance();
-                    // Strip time for date comparison
-                    currentCal.set(java.util.Calendar.HOUR_OF_DAY, 0);
-                    currentCal.set(java.util.Calendar.MINUTE, 0);
-                    currentCal.set(java.util.Calendar.SECOND, 0);
-                    currentCal.set(java.util.Calendar.MILLISECOND, 0);
-                    long currentMillis = currentCal.getTimeInMillis();
-
-                    java.util.Iterator<Course> it = tempCourses.iterator();
-                    while (it.hasNext()) {
-                        Course c = it.next();
-                        try {
-                            int[] weeks = com.pku.or.ucourse.result.CourseTimeParser.parseWeekRange(c.rawTime);
-                            int endWeek = weeks[1];
-                            
-                            List<com.pku.or.ucourse.view.TimeSlot> slots = com.pku.or.ucourse.result.CourseTimeParser.parse(c.rawTime);
-                            int maxDay = -1;
-                            for (com.pku.or.ucourse.view.TimeSlot slot : slots) {
-                                if (slot.getDay() > maxDay) maxDay = slot.getDay();
-                            }
-                            
-                            if (maxDay >= 0) {
-                                java.util.Calendar endCal = java.util.Calendar.getInstance();
-                                endCal.setTime(firstWeekDate);
-                                endCal.add(java.util.Calendar.WEEK_OF_YEAR, endWeek - 1);
-                                endCal.add(java.util.Calendar.DAY_OF_MONTH, maxDay);
-                                
-                                // Strip time from endCal
-                                endCal.set(java.util.Calendar.HOUR_OF_DAY, 0);
-                                endCal.set(java.util.Calendar.MINUTE, 0);
-                                endCal.set(java.util.Calendar.SECOND, 0);
-                                endCal.set(java.util.Calendar.MILLISECOND, 0);
-                                
-                                // If current date is strictly after the end date, remove the course
-                                if (currentMillis > endCal.getTimeInMillis()) {
-                                    it.remove();
-                                }
-                            }
-                        } catch (Exception e) {
-                            // Ignore parsing errors, keep course
-                        }
+            // UCourse_DUMP: Print Input Courses
+            Log.d(TAG, "DUMP_DEBUG: === INPUT COURSES START ===");
+            if (tempCourses != null) {
+                for (Course c : tempCourses) {
+                    if (c != null) {
+                        Log.d(TAG, String.format("DUMP_DEBUG: Course[id=%s, title=%s, interest=%d, time=%s]", 
+                            c.id, c.title, c.interest, c.rawTime));
                     }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+            Log.d(TAG, "DUMP_DEBUG: === INPUT COURSES END ===");
 
-            final List<Course> courses = tempCourses;
-            PerformanceLogger.logPerformancePoint("COURSE_PROCESSING", "获取课程总数: " + courses.size());
-
-            // 2. 获取TimeFragment中的WeekTimeData
-            // 注意：getActivity()不能在后台线程直接调用，需要提前获取或使用Context
-            // 这里我们尝试直接读取SharedPreferences，避免UI操作
+            // 记录传播学研究方法课程在过滤过期课程前的信息
+            for (Course c : tempCourses) {
+                if (c != null && c.title != null && c.title.contains("传播学研究方法")) {
+                    Log.d(TAG, "SPECIAL_DEBUG: 过滤过期课程前 - 传播学研究方法课程信息: 标题=" + c.title + ", 兴趣分=" + c.interest + ", 原始时间=" + c.rawTime + ", ID=" + c.id);
+                }
+            }
+            
+            // 1. 获取TimeFragment中的WeekTimeData (提前获取用于过滤)
             long freeTimeStartTime = System.currentTimeMillis();
             WeekTimeData freeTimes = null;
             try {
@@ -210,20 +263,212 @@ public class ResultFragment extends Fragment {
             } catch (Throwable _t) { /* ignore */ }
             if (freeTimes == null) freeTimes = new WeekTimeData();
             final WeekTimeData finalFreeTimes = freeTimes;
+            
+            // 记录空闲时间信息
+            Log.d(TAG, "GENERATE_DEBUG: 空闲时间数据状态: " + (freeTimes.getWeekStartDate() != null ? "包含日期信息" : "无日期信息"));
+            if (freeTimes != null) {
+                String[] weekDays = {"一", "二", "三", "四", "五", "六", "日"};
+                for (int day = 0; day < 7; day++) {
+                    List<WeekTimeData.TimeRange> ranges = freeTimes.getDateTimeRangesByDayIndex(day);
+                    if (ranges == null || ranges.isEmpty()) {
+                        ranges = freeTimes.getGenericTimeRangesByDayIndex(day);
+                    }
+                    if (ranges != null && !ranges.isEmpty()) {
+                        for (WeekTimeData.TimeRange range : ranges) {
+                            Log.d(TAG, "GENERATE_DEBUG: 星期" + weekDays[day] + "空闲时间: " + range.getStartSection() + "-" + range.getEndSection());
+                        }
+                    }
+                }
+            }
             PerformanceLogger.logPerformancePoint("TIME_PROCESSING", "获取空闲时间完成 - 耗时: " + (System.currentTimeMillis() - freeTimeStartTime) + "ms");
+
+            // Filter courses based on Interest, Target Week, and Free Time
+            try {
+                android.content.SharedPreferences prefs = requireContext().getSharedPreferences("ucourse_prefs", android.content.Context.MODE_PRIVATE);
+                String firstWeekStr = prefs.getString("first_week_date", null);
+                
+                // 计算目标周次
+                int targetWeekIndex = -1;
+                if (firstWeekStr != null && finalFreeTimes.getWeekStartDate() != null) {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+                    java.util.Date firstWeekDate = sdf.parse(firstWeekStr);
+                    java.util.Date targetDate = finalFreeTimes.getWeekStartDate();
+                    
+                    long diff = targetDate.getTime() - firstWeekDate.getTime();
+                    long weeks = diff / (7L * 24 * 3600 * 1000);
+                    targetWeekIndex = (int) weeks + 1;
+                    
+                    Log.d(TAG, "FILTER_DEBUG: 目标周计算 - 开学日期: " + firstWeekStr + ", 目标日期: " + sdf.format(targetDate) + ", 目标周次: " + targetWeekIndex);
+                } else {
+                    Log.d(TAG, "FILTER_DEBUG: 无法计算目标周次 - 缺少开学日期或目标周日期");
+                }
+
+                java.util.Iterator<Course> it = tempCourses.iterator();
+                while (it.hasNext()) {
+                    Course c = it.next();
+                    boolean isCommCourse = (c != null && c.title != null && c.title.contains("传播学研究方法"));
+                    
+                    // 1. Check Interest (Must be > 0)
+                if (c.interest <= 0) {
+                    Log.d(TAG, "FILTER_DEBUG: 课程 " + c.title + " 因兴趣分(" + c.interest + ")<=0 被移除");
+                    it.remove();
+                    continue;
+                }
+
+                    // 2. Check Target Week
+                    if (targetWeekIndex != -1) {
+                         try {
+                            int[] weeks = com.pku.or.ucourse.result.CourseTimeParser.parseWeekRange(c.rawTime);
+                            int startWeek = weeks[0];
+                            int endWeek = weeks[1];
+                            
+                            if (targetWeekIndex < startWeek || targetWeekIndex > endWeek) {
+                                if (isCommCourse) Log.d(TAG, "FILTER_DEBUG: 传播学研究方法不在目标周(" + targetWeekIndex + ")范围内(" + startWeek + "-" + endWeek + ")");
+                                Log.d(TAG, "FILTER_DEBUG: 课程 " + c.title + " 不在目标周(" + targetWeekIndex + ")范围内(" + startWeek + "-" + endWeek + ") 被移除");
+                                it.remove();
+                                continue;
+                            }
+                         } catch (Exception e) {
+                             Log.d(TAG, "FILTER_DEBUG: 解析课程 " + c.title + " 周次失败: " + e.getMessage());
+                         }
+                    }
+
+                    // 3. Check Free Time Compatibility
+                    // Check if the course's time slots are FULLY contained in the Free Time slots for that day
+                    try {
+                        List<com.pku.or.ucourse.view.TimeSlot> slots = com.pku.or.ucourse.result.CourseTimeParser.parse(c.rawTime);
+                        boolean isCompatible = true;
+                        
+                        for (com.pku.or.ucourse.view.TimeSlot slot : slots) {
+                            int day = slot.getDay(); // 0-6 (Mon-Sun) -> Wait, parser returns 1-7?
+                            // Parser usually maps 周一->1? No, let's check parser.
+                            // Looking at TimeTableView, day index is 0-6.
+                            // Looking at CourseTimeParser, toDayIndex("一") returns 0?
+                            // Need to verify. Assuming 0-6 for now based on standard usage.
+                            
+                            // Let's assume standard day index 0-6.
+                            // Use generic lookup to match by Day of Week regardless of week start date alignment
+                            List<WeekTimeData.TimeRange> freeRanges = finalFreeTimes.getGenericTimeRangesByDayIndex(day);
+                            
+                            if (freeRanges == null || freeRanges.isEmpty()) {
+                                // No free time set for this day -> Assume user is free all day (Consistent with RecommendationSolver)
+                                // If list is empty, it means no constraints were set for this day.
+                                Log.d(TAG, "FILTER_DEBUG: 课程 " + c.title + " 在星期" + day + "无空闲时间设置，默认允许");
+                                continue;
+                            }
+                            
+                            boolean slotCovered = false;
+                            for (WeekTimeData.TimeRange free : freeRanges) {
+                                if (slot.getStartSection() >= free.getStartSection() && slot.getEndSection() <= free.getEndSection()) {
+                                    slotCovered = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (!slotCovered) {
+                                isCompatible = false;
+                                if (isCommCourse) Log.d(TAG, "FILTER_DEBUG: 传播学研究方法时间冲突: 星期" + day + " " + slot.getStartSection() + "-" + slot.getEndSection());
+                                break;
+                            }
+                        }
+                        
+                        if (!isCompatible) {
+                            Log.d(TAG, "FILTER_DEBUG: 课程 " + c.title + " 不在空闲时间范围内被移除");
+                            it.remove();
+                            continue;
+                        }
+                        
+                    } catch (Exception e) {
+                        Log.d(TAG, "FILTER_DEBUG: 解析课程 " + c.title + " 时间槽失败: " + e.getMessage());
+                    }
+                    
+                    if (isCommCourse) {
+                        Log.d(TAG, "FILTER_DEBUG: 传播学研究方法课程通过所有过滤保留");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.d(TAG, "FILTER_DEBUG: 课程过滤出现异常: " + e.getMessage());
+            }
+
+            final List<Course> courses = tempCourses;
+            Log.d(TAG, "GENERATE_DEBUG: 原始课程数: " + rawCourses.size() + ", 过滤后: " + courses.size());
+            // 记录兴趣分>0的课程信息
+            for (Course course : courses) {
+                Log.d(TAG, "GENERATE_DEBUG: 保留课程: " + course.title + ", 兴趣分: " + course.interest + ", 时间: " + course.rawTime);
+            }
+            PerformanceLogger.logPerformancePoint("COURSE_PROCESSING", "获取课程总数: " + courses.size());
+
+            // DUMP_DEBUG: Print Input Time (Moved logic to match format)
+            Log.d(TAG, "DUMP_DEBUG: === INPUT TIME START ===");
+            if (finalFreeTimes != null) {
+                String[] weekDays = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+                for (int day = 0; day < 7; day++) {
+                    List<WeekTimeData.TimeRange> ranges = finalFreeTimes.getDateTimeRangesByDayIndex(day);
+                    if (ranges == null || ranges.isEmpty()) {
+                        ranges = finalFreeTimes.getGenericTimeRangesByDayIndex(day);
+                    }
+                    if (ranges != null && !ranges.isEmpty()) {
+                        for (WeekTimeData.TimeRange range : ranges) {
+                            Log.d(TAG, String.format("DUMP_DEBUG: Time[day=%s, start=%d, end=%d]", 
+                                weekDays[day], range.getStartSection(), range.getEndSection()));
+                        }
+                    }
+                }
+            } else {
+                Log.d(TAG, "DUMP_DEBUG: Time data is null");
+            }
+            Log.d(TAG, "DUMP_DEBUG: === INPUT TIME END ===");
+
 
             
             // 筛选课程：排除没有课程名和没有课程时间的课程
             List<Course> filteredCourses = new ArrayList<>();
             long filterStartTime = System.currentTimeMillis();
             for (Course course : courses) {
-                if (course != null && course.title != null && !course.title.trim().isEmpty() && 
-                    course.rawTime != null && !course.rawTime.trim().isEmpty()) {
-                    filteredCourses.add(course);
+                boolean shouldAdd = false;
+                if (course != null) {
+                    // 特别记录传播学研究方法课程的信息，无论title是否为空
+                    boolean isCommCourse = false;
+                    if (course.title != null && course.title.contains("传播学研究方法")) {
+                        isCommCourse = true;
+                    } else if (course.id != null && course.id.contains("传播学研究方法")) {
+                        isCommCourse = true;
+                    }
+                    
+                    if (isCommCourse) {
+                        Log.d(TAG, "SPECIAL_DEBUG: 传播学研究方法课程信息: 标题=" + course.title + ", ID=" + course.id + ", 兴趣分=" + course.interest + ", 原始时间=" + course.rawTime + ", 标题是否为空=" + (course.title == null || course.title.trim().isEmpty()) + ", 时间是否为空=" + (course.rawTime == null || course.rawTime.trim().isEmpty()));
+                    }
+                    
+                    // 修改筛选逻辑：用户设置了兴趣分的课程即使rawTime为空也能被保留
+                    // 这确保用户明确想要的课程不会因为时间信息缺失而被过滤掉
+                    if ((course.title != null && !course.title.trim().isEmpty()) && 
+                        (course.rawTime != null && !course.rawTime.trim().isEmpty() || course.interest > 0)) {
+                        filteredCourses.add(course);
+                        shouldAdd = true;
+                        
+                        if (isCommCourse) {
+                            Log.d(TAG, "SPECIAL_DEBUG: 传播学研究方法课程被添加到筛选列表");
+                        }
+                    } else {
+                        if (isCommCourse) {
+                            Log.d(TAG, "SPECIAL_DEBUG: 传播学研究方法课程未被添加到筛选列表");
+                        }
+                    }
                 }
             }
             PerformanceLogger.logPerformancePoint("COURSE_PROCESSING", "课程筛选完成 - 保留课程数: " + filteredCourses.size() + ", 耗时: " + 
                   (System.currentTimeMillis() - filterStartTime) + "ms");
+            
+            // 记录筛选后的课程信息
+            Log.d(TAG, "GENERATE_DEBUG: 筛选后课程数: " + filteredCourses.size());
+            for (Course course : filteredCourses) {
+                Log.d(TAG, "GENERATE_DEBUG: 筛选后课程: " + course.title + ", 兴趣分: " + course.interest + ", 时间: " + course.rawTime + ", ID: " + course.id);
+                // 特别记录传播学研究方法课程的筛选后信息
+                if (course.title.contains("传播学研究方法")) {
+                    Log.d(TAG, "SPECIAL_DEBUG: 传播学研究方法课程被成功筛选!");
+                }
+            }
             
             // 创建课程分组：将相同时间和分数的课程分为一组
             Map<String, List<Course>> courseGroups = new HashMap<>();
@@ -249,8 +494,26 @@ public class ResultFragment extends Fragment {
                 }
                 
                 String groupKey = keyBuilder.toString();
-                courseGroups.putIfAbsent(groupKey, new ArrayList<>());
+                if (!courseGroups.containsKey(groupKey)) {
+                    courseGroups.put(groupKey, new ArrayList<>());
+                }
                 courseGroups.get(groupKey).add(course);
+                Log.d(TAG, "GROUP_DEBUG: 课程分组: " + course.title + " -> 组键: " + groupKey);
+                
+                // 特别记录传播学研究方法课程的分组信息
+                if (course.title.contains("传播学研究方法")) {
+                    Log.d(TAG, "SPECIAL_DEBUG: 传播学研究方法课程分组信息: 组键=" + groupKey + ", 解析的时间槽数量=" + slots.size() + ", 时间槽详情=" + slots.toString());
+                }
+            }
+            
+            // 记录分组结果
+            Log.d(TAG, "GROUP_DEBUG: 分组数: " + courseGroups.size());
+            for (Map.Entry<String, List<Course>> entry : courseGroups.entrySet()) {
+                List<Course> group = entry.getValue();
+                Log.d(TAG, "GROUP_DEBUG: 组键: " + entry.getKey() + ", 包含课程: " + group.size() + "个");
+                for (Course course : group) {
+                    Log.d(TAG, "GROUP_DEBUG:   - " + course.title + ", 兴趣分: " + course.interest);
+                }
             }
             PerformanceLogger.logPerformancePoint("COURSE_PROCESSING", "课程分组完成 - 分组数: " + courseGroups.size() + ", 耗时: " +
                         (System.currentTimeMillis() - groupingStartTime) + "ms");
@@ -273,6 +536,34 @@ public class ResultFragment extends Fragment {
                 groupedCourses.add(groupCourse);
                 groupMapping.put(groupCourse.id, tempMapping.get(firstCourse.id));
                 groupToOriginalCourses.put(groupCourse.id, group);
+                
+                Log.d(TAG, "GROUP_DEBUG: 创建组代表课程: " + groupCourse.title + ", 兴趣分: " + groupCourse.interest + ", 时间: " + groupCourse.rawTime + ", 组ID: " + groupCourse.id);
+                Log.d(TAG, "GROUP_DEBUG:   组代表基于: " + firstCourse.title + ", 原始兴趣分: " + firstCourse.interest);
+                
+                // 特别记录包含传播学研究方法课程的组信息
+                boolean containsCommCourse = false;
+                for (Course c : group) {
+                    if (c.title.contains("传播学研究方法")) {
+                        containsCommCourse = true;
+                        break;
+                    }
+                }
+                if (containsCommCourse) {
+                    Log.d(TAG, "SPECIAL_DEBUG: 包含传播学研究方法的组信息: 组键=" + entry.getKey() + ", 组代表标题=" + groupCourse.title + ", 组包含课程数=" + group.size());
+                    for (Course c : group) {
+                        Log.d(TAG, "SPECIAL_DEBUG:   组内课程: " + c.title + ", 兴趣分=" + c.interest);
+                    }
+                }
+            }
+            
+            // 记录最终用于求解的课程
+            Log.d(TAG, "GROUP_DEBUG: 最终用于求解的课程数: " + groupedCourses.size());
+            for (Course course : groupedCourses) {
+                Log.d(TAG, "GROUP_DEBUG: 求解课程: " + course.title + ", 兴趣分: " + course.interest + ", 时间: " + course.rawTime + ", ID: " + course.id);
+                // 特别记录包含传播学研究方法的组代表课程
+                if (course.title.contains("传播学研究方法")) {
+                    Log.d(TAG, "SPECIAL_DEBUG: 包含传播学研究方法的组代表课程被加入求解列表!");
+                }
             }
             
             final List<Course> finalCourses = groupedCourses;
@@ -287,7 +578,7 @@ public class ResultFragment extends Fragment {
             
             // 记录求解器初始化时间
             long solverInitStartTime = System.currentTimeMillis();
-            RecommendationSolver solver = new RecommendationSolver(finalCourses, mapping, finalFreeTimes, 10, timeLimitMs);
+            RecommendationSolver solver = new RecommendationSolver(finalCourses, mapping, finalFreeTimes, maxRecommendations, timeLimitMs);
             solverRef.set(solver); // Share solver instance for progress tracking
             
             PerformanceLogger.logPerformancePoint("SOLVER_PROCESS", "求解器初始化完成 - 耗时: " + (System.currentTimeMillis() - solverInitStartTime) +
@@ -370,6 +661,26 @@ public class ResultFragment extends Fragment {
             PerformanceLogger.logPerformancePoint("SOLVER_PROCESS", "课程还原完成 - 耗时: " + (System.currentTimeMillis() - restoreStartTime) +
                     "ms");
 
+            // DUMP_DEBUG: Print Output Results
+            Log.d(TAG, "DUMP_DEBUG: === OUTPUT RESULTS START ===");
+            if (solutions != null) {
+                for (int i = 0; i < solutions.size(); i++) {
+                    RecommendationSolver.Solution sol = solutions.get(i);
+                    Log.d(TAG, String.format("DUMP_DEBUG: Solution[%d] Score=%d", i + 1, sol.totalScore));
+                    if (sol.courses != null) {
+                        for (Course c : sol.courses) {
+                            if (c != null) {
+                                Log.d(TAG, String.format("DUMP_DEBUG:   -> Course[title=%s, interest=%d, time=%s]", 
+                                    c.title, c.interest, c.rawTime));
+                            }
+                        }
+                    }
+                }
+            } else {
+                Log.d(TAG, "DUMP_DEBUG: No solutions found");
+            }
+            Log.d(TAG, "DUMP_DEBUG: === OUTPUT RESULTS END ===");
+
             // 在主线程更新UI
             new Handler(Looper.getMainLooper()).post(() -> {
                 // Stop progress thread immediately
@@ -395,7 +706,8 @@ public class ResultFragment extends Fragment {
                         if (solution.courses != null) {
                             for (Course c : solution.courses) {
                                 if (c != null) {
-                                    courseFrequency.put(c.id, courseFrequency.getOrDefault(c.id, 0) + 1);
+                                    Integer count = courseFrequency.get(c.id);
+                                    courseFrequency.put(c.id, (count != null ? count : 0) + 1);
                                 }
                             }
                         }
@@ -942,7 +1254,7 @@ public class ResultFragment extends Fragment {
             // 设置固定高度，显示5节课，同时启用滚动
             ViewGroup.LayoutParams params = holder.rvCourses.getLayoutParams();
             // 175dp大约足够显示5个课程 (每个~35dp)
-            params.height = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 155, holder.itemView.getResources().getDisplayMetrics());
+            params.height = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 138, holder.itemView.getResources().getDisplayMetrics());
             holder.rvCourses.setLayoutParams(params);
             holder.rvCourses.setNestedScrollingEnabled(true);
             holder.rvCourses.setHasFixedSize(true);

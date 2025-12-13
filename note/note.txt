@@ -32,6 +32,7 @@
 
 调整星期几的宽度：
 app/src/main/res/layout/item_segment.xml
+android:layout_width="180dp"
 调整星期几的高度：
 app/src/main/java/com/pku/or/ucourse/ResultFragment.java
 params.height = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 175, holder.itemView.getResources().getDisplayMetrics());
