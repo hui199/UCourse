@@ -1370,7 +1370,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             
             if (match) {
                 int base = originalInterestMap.getOrDefault(child.course.id, 0);
-                int displayScore = Math.max(0, Math.min(10, base + (int)delta));
+                int displayScore = Math.max(0, Math.min(10, base + Math.round(delta)));
 
                 try {
                     android.util.Log.d("CourseAdapterDebug", "previewHeaderDrag: child=" + child.title + 
@@ -1437,8 +1437,7 @@ public class CourseAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
              
              if (match) {
                  hasAny = true;
-                 // Calculate hypothetical score using integer delta to match incremental logic
-                 float newScore = Math.max(0, Math.min(10, c.interest + (int)delta));
+                 float newScore = Math.max(0, Math.min(10, c.interest + Math.round(delta)));
                  
                  // Strict thresholds
                  if (newScore < 10.0f) allTen = false;
